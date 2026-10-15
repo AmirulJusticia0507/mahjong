@@ -41,6 +41,14 @@ function shuffle(deck, rng = Math.random) {
   return a;
 }
 
+function seededRandom(seed) {
+  let state = Number(seed) >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
+
 function sortHand(hand) {
   return hand.slice().sort((a, b) => {
     const sa = SUIT_ORDER[tileSuit(a)];
@@ -212,6 +220,7 @@ function removeForGang(hand, tile) {
 module.exports = {
   createDeck,
   shuffle,
+  seededRandom,
   sortHand,
   countTiles,
   removeTiles,

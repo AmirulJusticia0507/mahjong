@@ -3,10 +3,17 @@ const { isWinningHand, validateGang, validatePong, validateChi, isSuited } = req
 function chooseDiscard(hand, rng = Math.random) {
   const counts = {};
   for (const tile of hand) counts[tile] = (counts[tile] || 0) + 1;
-  const singles = hand.filter((tile) => counts[tile] === 1);
-  const pool = singles.length ? singles : hand;
-  const honours = pool.filter((tile) => !isSuited(tile));
-  const candidates = honours.length ? honours : pool;
+  const score = (tile) => {
+    if (!isSuited(tile)) return counts[tile] === 1 ? 0 : counts[tile] * 3;
+    const rank = Number(tile.slice(1));
+    const suit = tile[0];
+    return counts[tile] * 3
+      + (counts[`${suit}${rank - 1}`] || 0)
+      + (counts[`${suit}${rank + 1}`] || 0)
+      + .5 * ((counts[`${suit}${rank - 2}`] || 0) + (counts[`${suit}${rank + 2}`] || 0));
+  };
+  const minimum = Math.min(...hand.map(score));
+  const candidates = hand.filter((tile) => score(tile) === minimum);
   return candidates[Math.floor(rng() * candidates.length)];
 }
 

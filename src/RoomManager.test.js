@@ -124,3 +124,11 @@ test('room listing exposes counts without private player data', () => {
   room.addPlayer('p0', 'Host');
   assert.deepEqual(manager.listRooms(), [{ code: room.code, status: 'waiting', players: 1, maxPlayers: 4 }]);
 });
+
+test('manager handles more than ten simultaneous waiting rooms', () => {
+  const { RoomManager } = require('./RoomManager');
+  const manager = new RoomManager();
+  for (let i = 0; i < 20; i++) manager.createRoom(4).addPlayer(`p${i}`, `Player ${i}`);
+  assert.equal(manager.listRooms().length, 20);
+  assert.equal(new Set(manager.listRooms().map((room) => room.code)).size, 20);
+});

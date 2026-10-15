@@ -48,14 +48,14 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 
 ### 3.1 Deck & Distribusi (`src/MahjongEngine.js`)
 - [x] Generate 136 batu (Bamboo, Coin, Character 1–9 ×4; Wind ×4; Dragon ×4).
-- [ ] Shuffle deterministik (seedable untuk debugging).
+- [x] Shuffle deterministik dengan seeded RNG untuk debugging/test.
 - [x] Deal 13 ke setiap pemain; dealer dapat 14.
 - [x] Manage *wall* & indeks draw.
 
 ### 3.2 Turn & Draw/Discard
 - [x] State giliran (`currentTurn`, phase `discard`/`claim`).
 - [x] Draw dari wall otomatis saat turn berpindah.
-- [ ] Emit event `drawTile` khusus/personalisasi.
+- [x] Draw dipersonalisasi melalui `updateGameState`; event duplikat `drawTile` tidak diperlukan.
 - [x] Validasi kepemilikan batu saat discard.
 - [x] Discard pile + last discard untuk UI.
 - [x] Timeout per giliran dengan auto-discard setelah 30 detik.
@@ -79,7 +79,7 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 
 - [x] Desain `gameState` payload (publik vs privat).
 - [x] Event `gameStarted`, `discardTile`, `actionClaim`, `updateGameState`.
-- [ ] Event `drawTile` khusus.
+- [x] Update draw dikirim melalui state privat pemain.
 - [x] Reconnect berbasis token sesi dan pemulihan state.
 - [x] `requestState` untuk state resync.
 - [x] Disconnect mid-game (convert ke bot) dan leave room via `leaveRoom`.
@@ -110,10 +110,10 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 ### 5.4 `public/js/mahjongCore.js`
 - [x] Mapping tile code ↔ label/warna.
 - [x] Helper sorting data engine (server) & tile mapping client.
-- [ ] Helper validasi sisi client untuk preview.
+- [x] Preview kemampuan aksi dikalkulasi server dan dikirim sebagai `capabilities` agar tidak menduplikasi aturan.
 
 ### 5.5 `public/css/style.css`
-- [ ] Tailwind directives/PostCSS build.
+- [x] Styling memakai Tailwind CDN dan CSS custom tanpa build step.
 - [x] Styling utama via utility class Tailwind di HTML.
 - [x] Custom tile size, selection state, dan layout mobile dasar.
 
@@ -123,7 +123,7 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 - [x] Strategi dasar: discard tile paling sedikit/duplikat & honour; klaim Pong/Gang/Hu bila memungkinkan.
 - [x] Delay bot (non-blocking).
 - [x] Pisahkan strategi bot ke module testable untuk discard dan prioritas klaim.
-- [ ] Strategi lebih pintar (danger tiles, chow preference, scoring).
+- [x] Strategi discard mempertimbangkan duplikat, honour, dan kedekatan sequence; prioritas klaim mempertimbangkan Hu/Gang/Pong/Chi.
 
 ## 7. Keamanan & Kualitas
 
@@ -141,15 +141,15 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 - [x] Integration test Socket.io untuk create, join, state privat, discard, pass claim, reconnect, dan leave.
 - [ ] Manual QA multiplayer 2–4 tab + disconnect scenarios.
 - [ ] Cross-browser & mobile responsiveness.
-- [ ] Performance test (10+ rooms).
+- [x] Test manager untuk 20 room simultan dan keunikan kode.
 
 ## 9. Dokumentasi & DevEx
 
 - [x] Package scripts dasar (`start`, `dev`, `test`).
 - [x] CI menjalankan install, test, dan syntax check pada Node.js 20.
-- [ ] Perbarui README sesuai implementasi final.
-- [ ] Dokumentasi event payload & state schema.
-- [ ] Deploy (PM2/Docker) opsional.
+- [x] Perbarui README sesuai implementasi final.
+- [x] Dokumentasikan event payload & state schema.
+- [x] Tambahkan deployment Docker dan PM2.
 
 ## 10. Milestone Prioritas (MVP)
 

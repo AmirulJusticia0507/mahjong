@@ -13,6 +13,12 @@ test('hand count uniqueness not required; shuffle changes order', () => {
   assert.notDeepEqual(a, b);
 });
 
+test('seeded shuffle is reproducible', () => {
+  const a = E.shuffle(E.createDeck(), E.seededRandom(42));
+  const b = E.shuffle(E.createDeck(), E.seededRandom(42));
+  assert.deepStrictEqual(a, b);
+});
+
 test('winning hand detected', () => {
   const hand = ['B1','B2','B3','B4','B5','B6','B7','B8','B9','B1','B1','B1','K1','K1'];
   assert.strictEqual(E.isWinningHand(hand, 0), true);
