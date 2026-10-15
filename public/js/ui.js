@@ -12,7 +12,7 @@
       handHTML = `<span class="text-slate-300">${player.handCount || 0} batu</span>`;
     }
     return `
-      <div class="text-sm font-semibold mb-1">${escapeHtml(player.name)}${player.isBot ? ' 🤖' : ''}</div>
+      <div class="text-sm font-semibold mb-1">${escapeHtml(player.name)}${player.isBot ? ' 🤖' : ''} · ${player.score || 0} poin</div>
       <div class="flex flex-wrap items-center gap-1 mb-1">${melds}</div>
       <div class="flex flex-wrap">${handHTML}</div>
     `;
@@ -23,7 +23,7 @@
   function render(state) {
     if (!state) return;
     byId('roomLabel').textContent = state.code;
-    byId('phaseLabel').textContent = state.phase;
+    byId('phaseLabel').textContent = `${state.phase} · ronde ${state.round || 1}`;
     byId('wallLabel').textContent = state.wallCount;
     byId('lastDiscard').textContent = state.lastDiscard ? `${state.lastDiscard.tile} (p${state.lastDiscard.by})` : '-';
 

@@ -89,3 +89,17 @@ test('inactive room cleanup removes old rooms', () => {
   manager.removeInactiveRooms(1000);
   assert.equal(manager.rooms.size, 0);
 });
+
+test('self-draw Hu awards basic score and host starts next round', (t) => {
+  const room = roomWithPlayers(2);
+  t.after(() => room.clearTimers());
+  room.status = 'playing';
+  room.phase = 'discard';
+  room.currentTurn = 0;
+  room.players[0].hand = ['B1','B2','B3','B4','B5','B6','B7','B8','B9','B1','B1','B1','K1','K1'];
+  assert.equal(room.declareHu('p0').ok, true);
+  assert.deepEqual(room.players.map((p) => p.score), [1, -1]);
+  assert.equal(room.nextRound('p0').ok, true);
+  assert.equal(room.round, 2);
+  assert.equal(room.status, 'playing');
+});

@@ -72,8 +72,8 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 
 ### 3.4 Kondisi Akhir & Skor
 - [x] Deteksi kemenangan (Hu) & akhir wall (draw game).
-- [ ] Hitung skor/fan/points.
-- [ ] Reset round / next dealer logic.
+- [x] Hitung skor dasar (1 poin, bonus 1 per Gang; dibayar setiap lawan).
+- [x] Reset round dan rotasi dealer bila dealer tidak menang.
 
 ## 4. Real-time & Sinkronisasi
 

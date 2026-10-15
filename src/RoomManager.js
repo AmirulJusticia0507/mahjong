@@ -48,8 +48,11 @@ class Room {
     this.turnTimer = null;
     this.winner = null;
     this.result = null;
+    this.winType = null;
     this.botTimers = [];
     this.updatedAt = Date.now();
+    this.dealer = 0;
+    this.round = 1;
   }
 
   addPlayer(socketId, name) {
@@ -64,6 +67,7 @@ class Room {
       isBot: false,
       disconnected: false,
       reconnectToken: crypto.randomUUID(),
+      score: 0,
     };
     this.players.push(player);
     this.touch();
@@ -74,7 +78,7 @@ class Room {
   addBot(name) {
     if (this.players.length >= this.maxPlayers) return null;
     const idx = this.players.length;
-    const player = { id: `bot-${idx}-${Date.now()}`, name: name || `Bot${idx + 1}`, hand: [], melds: [], isBot: true, disconnected: false, reconnectToken: null };
+    const player = { id: `bot-${idx}-${Date.now()}`, name: name || `Bot${idx + 1}`, hand: [], melds: [], isBot: true, disconnected: false, reconnectToken: null, score: 0 };
     this.players.push(player);
     this.touch();
     return player;
@@ -188,19 +192,20 @@ class Room {
     for (let i = 0; i < HAND; i++) {
       for (let p = 0; p < n; p++) hands[p].push(deck.pop());
     }
-    hands[0].push(deck.pop());
+    hands[this.dealer].push(deck.pop());
     for (let p = 0; p < n; p++) {
       this.players[p].hand = sortHand(hands[p]);
       this.players[p].melds = [];
     }
     this.wall = deck;
     this.discards = [];
-    this.currentTurn = 0;
+    this.currentTurn = this.dealer;
     this.phase = 'discard';
     this.lastDiscard = null;
     this.claimState = null;
     this.winner = null;
     this.result = null;
+    this.winType = null;
     this.status = 'playing';
     this.touch();
     this.clearBotTimers();
@@ -246,6 +251,7 @@ class Room {
     this.status = 'finished';
     this.phase = 'finished';
     this.result = 'draw';
+    this.winType = null;
     this.winner = null;
     this.clearTimers();
   }
@@ -360,6 +366,45 @@ class Room {
     return { ok: true };
   }
 
+  declareHu(playerId) {
+    const pIndex = this.findPlayerIndex(playerId);
+    if (pIndex < 0) return { ok: false, error: 'Not in room' };
+    if (this.status !== 'playing' || this.phase !== 'discard' || pIndex !== this.currentTurn) {
+      return { ok: false, error: 'Hu is only allowed on your turn' };
+    }
+    const player = this.players[pIndex];
+    if (!isWinningHand(player.hand, player.melds.length)) return { ok: false, error: 'Hand is not complete' };
+    this.finishWin(pIndex, 'self-draw');
+    return { ok: true };
+  }
+
+  finishWin(winnerIndex, winType) {
+    const winner = this.players[winnerIndex];
+    const points = 1 + winner.melds.filter((m) => m.type === 'gang').length;
+    for (let i = 0; i < this.players.length; i++) {
+      if (i === winnerIndex) this.players[i].score += points * (this.players.length - 1);
+      else this.players[i].score -= points;
+    }
+    this.winner = winnerIndex;
+    this.result = 'win';
+    this.winType = winType;
+    this.status = 'finished';
+    this.phase = 'finished';
+    this.lastDiscard = null;
+    this.claimState = null;
+    this.clearTimers();
+    this.touch();
+  }
+
+  nextRound(requesterId) {
+    if (this.hostId !== requesterId) return { ok: false, error: 'Only host can start next round' };
+    if (this.status !== 'finished') return { ok: false, error: 'Round is not finished' };
+    if (this.winner !== this.dealer) this.dealer = (this.dealer + 1) % this.players.length;
+    this.round += 1;
+    this.status = 'waiting';
+    return this.startGame(false);
+  }
+
   resolveClaims() {
     if (this.phase !== 'claim' || !this.claimState) return;
     if (this.claimTimer) { clearTimeout(this.claimTimer); this.claimTimer = null; }
@@ -387,12 +432,7 @@ class Room {
 
     if (best.type === 'hu') {
       claimer.hand = sortHand(claimer.hand.concat([tile]));
-      this.winner = best.pIndex;
-      this.result = 'win';
-      this.status = 'finished';
-      this.phase = 'finished';
-      this.lastDiscard = null;
-      this.claimState = null;
+      this.finishWin(best.pIndex, 'discard');
       return;
     }
 
@@ -482,6 +522,7 @@ class Room {
         name: p.name,
         isBot: p.isBot,
         disconnected: p.disconnected,
+        score: p.score,
         handCount: p.hand.length,
         hand: p.id === viewerId ? p.hand : undefined,
         melds: p.melds,
@@ -493,6 +534,9 @@ class Room {
       phase: this.phase,
       winner: this.winner,
       result: this.result,
+      winType: this.winType,
+      dealer: this.dealer,
+      round: this.round,
       yourHand: viewer ? viewer.hand : [],
       reconnectToken: viewer ? viewer.reconnectToken : null,
     };

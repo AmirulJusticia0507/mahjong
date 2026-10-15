@@ -92,6 +92,14 @@
     if (!tile) return log('Tidak ada Gang dari tangan yang valid.');
     socket.emit('declareGang', { code: roomCode, tile });
   });
+  document.getElementById('declareHuBtn').addEventListener('click', () => {
+    if (roomCode && state && state.phase === 'discard' && window.confirm('Klaim Hu dari tangan ini?')) {
+      socket.emit('declareHu', { code: roomCode });
+    }
+  });
+  document.getElementById('nextRoundBtn').addEventListener('click', () => {
+    if (roomCode) socket.emit('nextRound', { code: roomCode });
+  });
   document.getElementById('passBtn').addEventListener('click', () => {
     if (roomCode) socket.emit('passClaim', { code: roomCode });
   });
@@ -167,6 +175,7 @@
       document.getElementById('startBtn').classList.add('hidden');
     }
     if (s.status === 'waiting') document.getElementById('startBtn').classList.remove('hidden');
+    document.getElementById('nextRoundBtn').classList.toggle('hidden', !(s.status === 'finished' && s.hostId === myId));
     window.UI.render(s);
   });
 

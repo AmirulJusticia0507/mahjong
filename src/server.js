@@ -174,6 +174,24 @@ io.on('connection', (socket) => {
     broadcastState(room);
   });
 
+  socket.on('declareHu', (data) => {
+    if (!allowEvent(socket, 'game', 20)) return;
+    const room = manager.getRoom((data && data.code || '').toUpperCase());
+    if (!room) return socket.emit('errorMessage', 'Room not found');
+    const res = room.declareHu(socket.id);
+    if (!res.ok) socket.emit('errorMessage', res.error);
+    broadcastState(room);
+  });
+
+  socket.on('nextRound', (data) => {
+    const room = manager.getRoom((data && data.code || '').toUpperCase());
+    if (!room) return socket.emit('errorMessage', 'Room not found');
+    const res = room.nextRound(socket.id);
+    if (!res.ok) return socket.emit('errorMessage', res.error);
+    broadcastEvent(room, 'gameStarted', { code: room.code, round: room.round });
+    broadcastState(room);
+  });
+
   socket.on('chatMessage', (data) => {
     if (!allowEvent(socket, 'chat', 10)) return;
     const code = (data && data.code || '').toUpperCase();
