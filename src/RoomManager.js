@@ -13,8 +13,9 @@ const {
   isSuited,
 } = require('./MahjongEngine');
 
-const CLAIM_TIMEOUT_MS = 5000;
-const BOT_DELAY_MS = 1200;
+const CLAIM_TIMEOUT_MS = Number(process.env.CLAIM_TIMEOUT_MS) || 5000;
+const TURN_TIMEOUT_MS = Number(process.env.TURN_TIMEOUT_MS) || 30000;
+const BOT_DELAY_MS = Number(process.env.BOT_DELAY_MS) || 1200;
 
 const CLAIM_PRIORITY = { chi: 1, pong: 2, gang: 3, hu: 4 };
 
@@ -43,6 +44,7 @@ class Room {
     this.lastDiscard = null;
     this.claimState = null;
     this.claimTimer = null;
+    this.turnTimer = null;
     this.winner = null;
     this.result = null;
     this.botTimers = [];
@@ -146,6 +148,7 @@ class Room {
     this.result = null;
     this.status = 'playing';
     this.clearBotTimers();
+    this.clearTurnTimer();
     this.scheduleBotsIfNeeded();
     return { ok: true };
   }
@@ -153,6 +156,18 @@ class Room {
   clearBotTimers() {
     for (const t of this.botTimers) clearTimeout(t);
     this.botTimers = [];
+  }
+
+  clearTurnTimer() {
+    if (this.turnTimer) clearTimeout(this.turnTimer);
+    this.turnTimer = null;
+  }
+
+  clearTimers() {
+    this.clearBotTimers();
+    this.clearTurnTimer();
+    if (this.claimTimer) clearTimeout(this.claimTimer);
+    this.claimTimer = null;
   }
 
   findPlayerIndex(id) {
@@ -176,7 +191,7 @@ class Room {
     this.phase = 'finished';
     this.result = 'draw';
     this.winner = null;
-    this.clearBotTimers();
+    this.clearTimers();
   }
 
   discardTile(playerId, tile) {
@@ -191,13 +206,14 @@ class Room {
     if (idx < 0) throw new Error('Tile not in hand');
 
     this.clearBotTimers();
+    this.clearTurnTimer();
     player.hand.splice(idx, 1);
     player.hand = sortHand(player.hand);
 
     this.lastDiscard = { tile, by: pIndex };
     this.discards.push({ tile, by: pIndex });
     this.phase = 'claim';
-    this.claimState = { tile, by: pIndex, claims: [] };
+    this.claimState = { tile, by: pIndex, claims: [], responses: new Set() };
     this.startClaimWindow();
     this.scheduleBotClaims();
   }
@@ -225,7 +241,7 @@ class Room {
     } else if (type === 'pong') {
       valid = validatePong(player.hand, tile);
     } else if (type === 'chi') {
-      valid = !!validateChi(player.hand, tile) && pIndex === (this.claimState.by + 1) % 4;
+      valid = !!validateChi(player.hand, tile) && pIndex === (this.claimState.by + 1) % this.players.length;
     } else {
       return { ok: false, error: 'Unknown claim type' };
     }
@@ -233,10 +249,54 @@ class Room {
 
     this.claimState.claims = this.claimState.claims.filter((c) => c.pIndex !== pIndex);
     this.claimState.claims.push({ pIndex, type, priority: CLAIM_PRIORITY[type] });
+    this.claimState.responses.add(pIndex);
 
     if (type === 'hu') {
       if (this.claimTimer) clearTimeout(this.claimTimer);
       this.resolveClaims();
+    }
+    return { ok: true };
+  }
+
+  passClaim(playerId) {
+    if (this.status !== 'playing' || this.phase !== 'claim' || !this.claimState) {
+      return { ok: false, error: 'No claim window' };
+    }
+    const pIndex = this.findPlayerIndex(playerId);
+    if (pIndex < 0) return { ok: false, error: 'Not in room' };
+    if (pIndex === this.claimState.by) return { ok: false, error: 'Discarder cannot pass claim' };
+    this.claimState.claims = this.claimState.claims.filter((c) => c.pIndex !== pIndex);
+    this.claimState.responses.add(pIndex);
+    if (this.claimState.responses.size >= this.players.length - 1) this.resolveClaims();
+    return { ok: true };
+  }
+
+  declareGang(playerId, tile) {
+    const pIndex = this.findPlayerIndex(playerId);
+    if (pIndex < 0) return { ok: false, error: 'Not in room' };
+    if (this.status !== 'playing' || this.phase !== 'discard' || pIndex !== this.currentTurn) {
+      return { ok: false, error: 'Gang is only allowed on your discard turn' };
+    }
+
+    const player = this.players[pIndex];
+    const matching = player.hand.filter((t) => t === tile).length;
+    const pong = player.melds.find((m) => m.type === 'pong' && m.tiles[0] === tile);
+    if (pong && matching >= 1) {
+      player.hand = removeTiles(player.hand, [tile]);
+      pong.type = 'gang';
+      pong.tiles.push(tile);
+    } else if (matching >= 4) {
+      player.hand = removeTiles(player.hand, [tile, tile, tile, tile]);
+      player.melds.push({ type: 'gang', tiles: [tile, tile, tile, tile] });
+    } else {
+      return { ok: false, error: 'Invalid concealed or promoted gang' };
+    }
+
+    this.clearTurnTimer();
+    this.drawForCurrent();
+    if (this.status === 'playing') {
+      this.phase = 'discard';
+      this.scheduleBotsIfNeeded();
     }
     return { ok: true };
   }
@@ -294,6 +354,7 @@ class Room {
     this.phase = 'discard';
     this.lastDiscard = null;
     this.claimState = null;
+    if (best.type === 'gang') this.drawForCurrent();
     this.scheduleBotsIfNeeded();
   }
 
@@ -312,13 +373,16 @@ class Room {
     if (this.status !== 'playing') return;
     if (this.phase === 'discard') {
       const p = this.players[this.currentTurn];
-      if (p && p.isBot) {
+      this.clearTurnTimer();
+      if (p) {
+        const delay = p.isBot ? BOT_DELAY_MS : TURN_TIMEOUT_MS;
         const t = setTimeout(() => {
           if (this.status !== 'playing' || this.phase !== 'discard') return;
           const tile = chooseBotDiscard(p.hand);
           try { this.discardTile(p.id, tile); } catch (e) { /* ignore */ }
-        }, BOT_DELAY_MS);
-        this.botTimers.push(t);
+        }, delay);
+        if (p.isBot) this.botTimers.push(t);
+        else this.turnTimer = t;
       }
     } else if (this.phase === 'claim') {
       this.scheduleBotClaims();
@@ -342,7 +406,7 @@ class Room {
         else if (i === (by + 1) % this.players.length && validateChi(p.hand, tile)) type = 'chi';
         if (type) {
           try { this.submitClaim(p.id, type); } catch (e) { /* ignore */ }
-        }
+        } else this.passClaim(p.id);
       }, BOT_DELAY_MS + Math.floor(Math.random() * 400));
       this.botTimers.push(t);
     }

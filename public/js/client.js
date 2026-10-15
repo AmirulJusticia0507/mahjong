@@ -79,7 +79,22 @@
       socket.emit('actionClaim', { code: roomCode, type });
     });
   });
-  document.getElementById('passBtn').addEventListener('click', () => { /* no-op; timeout handles */ });
+  document.getElementById('declareGangBtn').addEventListener('click', () => {
+    if (!roomCode || !state || state.phase !== 'discard') return;
+    const me = state.players.find((p) => p.id === myId);
+    if (!me || !me.hand) return;
+    const counts = me.hand.reduce((all, tile) => {
+      all[tile] = (all[tile] || 0) + 1;
+      return all;
+    }, {});
+    const promoted = (me.melds || []).find((m) => m.type === 'pong' && counts[m.tiles[0]] >= 1);
+    const tile = promoted ? promoted.tiles[0] : Object.keys(counts).find((key) => counts[key] >= 4);
+    if (!tile) return log('Tidak ada Gang dari tangan yang valid.');
+    socket.emit('declareGang', { code: roomCode, tile });
+  });
+  document.getElementById('passBtn').addEventListener('click', () => {
+    if (roomCode) socket.emit('passClaim', { code: roomCode });
+  });
 
   document.getElementById('chatSend').addEventListener('click', () => {
     const input = document.getElementById('chatInput');

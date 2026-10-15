@@ -37,7 +37,7 @@ Status saat ini: MVP sudah dapat membuat/join room, bermain 2–4 pemain dengan 
 - [x] Kelola wall, hand, discard pile, giliran, dan phase permainan.
 - [x] Validasi discard berdasarkan giliran dan kepemilikan batu.
 - [x] Akhiri permainan sebagai draw ketika wall habis.
-- [ ] Tambahkan timeout giliran pemain manusia (auto-discard/skip).
+- [x] Tambahkan timeout giliran pemain manusia (auto-discard setelah 30 detik).
 
 ### Klaim dan kemenangan
 
@@ -45,9 +45,9 @@ Status saat ini: MVP sudah dapat membuat/join room, bermain 2–4 pemain dengan 
 - [x] Validasi dasar Chi, Pong, Gang, dan Hu di server.
 - [x] Terapkan prioritas Hu > Gang > Pong > Chi dan tie-break berdasarkan urutan pemain.
 - [x] Pindahkan batu hasil klaim ke meld dan lanjutkan giliran ke pengklaim.
-- [ ] Perbaiki validasi posisi Chi agar memakai jumlah pemain room, bukan konstanta 4.
-- [ ] Implementasikan Gang lengkap: concealed/added/promoted dan replacement draw.
-- [ ] Tambahkan tombol/pass event yang langsung mencatat pemain melewati klaim (saat ini menunggu timeout).
+- [x] Perbaiki validasi posisi Chi agar memakai jumlah pemain room, bukan konstanta 4.
+- [x] Implementasikan Gang lengkap: concealed/added/promoted dan replacement draw.
+- [x] Tambahkan tombol/pass event yang langsung mencatat pemain melewati klaim.
 - [ ] Tambahkan perhitungan skor/fan dan next-round/dealer logic.
 
 ## 4. Sinkronisasi, Keamanan, dan Robustness
@@ -83,8 +83,8 @@ Status saat ini: MVP sudah dapat membuat/join room, bermain 2–4 pemain dengan 
 ## 7. Testing & QA
 
 - [x] Tambahkan unit test dasar untuk deck, shuffle, sorting, Hu, Chi, Pong, dan Gang.
-- [ ] Tambahkan unit test `RoomManager` untuk kapasitas 2–4 pemain, leave, host transfer, bot fill, dan cleanup.
-- [ ] Tambahkan test klaim untuk prioritas, tie-break, timeout, dan posisi Chi di room 2/3 pemain.
+- [ ] Lengkapi unit test `RoomManager`; kapasitas 2–4 pemain, leave, host transfer, dan bot fill sudah tercakup, cleanup belum.
+- [ ] Lengkapi test klaim; pass dan posisi Chi di room 3 pemain sudah tercakup, prioritas/tie-break/timeout belum.
 - [ ] Tambahkan integration test Socket.io untuk create/join/start/leave/disconnect dan gameplay.
 - [ ] Lakukan manual QA multiplayer 2–4 tab, bot, reconnect/disconnect, dan mobile.
 - [ ] Tambahkan lint/format dan jalankan di CI.

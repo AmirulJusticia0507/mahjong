@@ -119,6 +119,22 @@ io.on('connection', (socket) => {
     broadcastState(room);
   });
 
+  socket.on('passClaim', (data) => {
+    const room = manager.getRoom((data && data.code || '').toUpperCase());
+    if (!room) return socket.emit('errorMessage', 'Room not found');
+    const res = room.passClaim(socket.id);
+    if (!res.ok) socket.emit('errorMessage', res.error);
+    broadcastState(room);
+  });
+
+  socket.on('declareGang', (data) => {
+    const room = manager.getRoom((data && data.code || '').toUpperCase());
+    if (!room) return socket.emit('errorMessage', 'Room not found');
+    const res = room.declareGang(socket.id, data && data.tile);
+    if (!res.ok) socket.emit('errorMessage', res.error);
+    broadcastState(room);
+  });
+
   socket.on('chatMessage', (data) => {
     const code = (data && data.code || '').toUpperCase();
     const room = manager.getRoom(code);

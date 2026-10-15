@@ -1,0 +1,62 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { Room } = require('./RoomManager');
+
+function roomWithPlayers(count) {
+  const room = new Room('TEST01', count);
+  for (let i = 0; i < count; i++) room.addPlayer(`p${i}`, `Player ${i}`);
+  return room;
+}
+
+test('room supports 2-4 players and fills remaining seats with bots', (t) => {
+  const room = roomWithPlayers(3);
+  t.after(() => room.clearTimers());
+  room.players.pop();
+  assert.equal(room.startGame(true).ok, true);
+  assert.equal(room.players.length, 3);
+  assert.equal(room.players.filter((p) => p.isBot).length, 1);
+});
+
+test('waiting host transfers when leaving', () => {
+  const room = roomWithPlayers(2);
+  assert.equal(room.hostId, 'p0');
+  const result = room.leave('p0');
+  assert.equal(result.left.name, 'Player 0');
+  assert.equal(room.hostId, 'p1');
+});
+
+test('chi position follows room player count', (t) => {
+  const room = roomWithPlayers(3);
+  t.after(() => room.clearTimers());
+  room.status = 'playing';
+  room.phase = 'claim';
+  room.players[0].hand = ['B2', 'B3'];
+  room.claimState = { tile: 'B1', by: 2, claims: [], responses: new Set() };
+  assert.equal(room.submitClaim('p0', 'chi').ok, true);
+});
+
+test('all claim passes resolve immediately and advance the turn', (t) => {
+  const room = roomWithPlayers(2);
+  t.after(() => room.clearTimers());
+  room.status = 'playing';
+  room.phase = 'claim';
+  room.wall = ['B9'];
+  room.claimState = { tile: 'B1', by: 0, claims: [], responses: new Set() };
+  assert.equal(room.passClaim('p1').ok, true);
+  assert.equal(room.currentTurn, 1);
+  assert.equal(room.phase, 'discard');
+  assert.deepEqual(room.players[1].hand, ['B9']);
+});
+
+test('concealed gang draws a replacement tile', (t) => {
+  const room = roomWithPlayers(2);
+  t.after(() => room.clearTimers());
+  room.status = 'playing';
+  room.phase = 'discard';
+  room.currentTurn = 0;
+  room.wall = ['K9'];
+  room.players[0].hand = ['B1', 'B1', 'B1', 'B1'];
+  assert.equal(room.declareGang('p0', 'B1').ok, true);
+  assert.deepEqual(room.players[0].melds[0], { type: 'gang', tiles: ['B1', 'B1', 'B1', 'B1'] });
+  assert.deepEqual(room.players[0].hand, ['K9']);
+});
