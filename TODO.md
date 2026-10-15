@@ -116,6 +116,7 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 - [x] Styling memakai Tailwind CDN dan CSS custom tanpa build step.
 - [x] Styling utama via utility class Tailwind di HTML.
 - [x] Custom tile fisik, meld/discard river, selection state, dan layout mobile.
+- [x] PWA shell: manifest, ikon, theme-color, dan service worker offline dasar.
 
 ## 6. Bot/AI (Opsional)
 
@@ -139,9 +140,11 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 - [x] Unit test `MahjongEngine` dasar (deck, shuffle, Chi/Pong/Gang).
 - [x] QA browser dasar (render tanpa console error, create/join, start game, tombol keluar).
 - [x] Integration test Socket.io untuk create, join, state privat, discard, pass claim, reconnect, dan leave.
-- [ ] Manual QA multiplayer 2–4 tab + disconnect scenarios.
-- [ ] Cross-browser & mobile responsiveness.
+- [x] QA automated multiplayer 2 browser context + reconnect + tombol keluar.
+- [x] Cross-browser & mobile responsiveness via Playwright (Chromium, Firefox, WebKit, mobile Chrome, mobile WebKit).
 - [x] Test manager untuk 20 room simultan dan keunikan kode.
+- [ ] Manual QA multiplayer 2–4 tab di perangkat nyata.
+- [ ] Performance test beban 10+ room.
 
 ## 9. Dokumentasi & DevEx
 
