@@ -25,8 +25,11 @@ Verifikasi proyek:
 ```bash
 npm test
 npm run check
+npm run test:e2e
 npm audit
 ```
+
+`test:e2e` menjalankan Playwright pada Chromium, Firefox, WebKit, mobile Chrome, dan mobile WebKit, termasuk skenario dua user, reconnect, dan tombol keluar.
 
 ## Konfigurasi
 
@@ -95,6 +98,10 @@ Endpoint tambahan:
 
 - `GET /health` — health check.
 - `GET /api/rooms` — daftar room berstatus menunggu.
+
+## PWA dan offline
+
+Aplikasi menyediakan web manifest, ikon, dan service worker shell sehingga UI dasar tetap dapat dibuka saat koneksi internet sempat terputus. Tombol **Install Aplikasi** muncul pada browser yang mendukung instalasi PWA. Game real-time tetap membutuhkan koneksi aktif.
 
 ## Deployment
 

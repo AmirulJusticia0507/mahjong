@@ -97,11 +97,18 @@
   }
 
   // bind tile clicks for discard
+  // walk up from e.target to find any ancestor with data-tile,
+  // so clicking on glyphs or other inner elements still selects the tile correctly
   document.addEventListener('click', function (e) {
-    const t = e.target && e.target.getAttribute && e.target.getAttribute('data-tile');
-    if (!t) return;
+    let tile = e.target;
+    while (tile && tile.nodeType === 1) {
+      if (tile.hasAttribute('data-tile')) break;
+      tile = tile.parentElement;
+    }
+    if (!tile) return;
+    const t = tile.getAttribute('data-tile');
     const client = global.Client;
-    if (client && typeof client.selectTile === 'function') client.selectTile(t, e.target);
+    if (client && typeof client.selectTile === 'function') client.selectTile(t, tile);
   });
 
   global.UI = { render, escapeHtml, toast };

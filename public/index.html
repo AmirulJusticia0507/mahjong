@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#047857" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Mahjong Multiplayer</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
@@ -24,6 +30,7 @@
       <button id="createBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-500 p-2 rounded font-semibold">Buat Room</button>
       <button id="joinBtn" class="flex-1 bg-sky-600 hover:bg-sky-500 p-2 rounded font-semibold">Join Room</button>
     </div>
+    <button id="installBtn" class="hidden mt-3 w-full bg-teal-700 hover:bg-teal-600 p-2 rounded font-semibold">Install Aplikasi</button>
     <p id="lobbyStatus" class="mt-3 text-sm text-slate-300"></p>
     <div class="mt-5 border-t border-slate-700 pt-4">
       <div class="flex items-center justify-between mb-2">

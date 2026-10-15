@@ -8,6 +8,29 @@
   const lobby = document.getElementById('lobby');
   const game = document.getElementById('game');
   const status = document.getElementById('lobbyStatus');
+  let installPrompt = null;
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {
+      window.UI.toast('Mode offline gagal diaktifkan.', 'error');
+    }));
+  }
+
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    installPrompt = event;
+    document.getElementById('installBtn').classList.remove('hidden');
+  });
+
+  document.getElementById('installBtn').addEventListener('click', async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt = null;
+    document.getElementById('installBtn').classList.add('hidden');
+  });
+
+  window.addEventListener('appinstalled', () => window.UI.toast('Mahjong berhasil di-install.'));
 
   async function refreshRooms() {
     const list = document.getElementById('roomList');
