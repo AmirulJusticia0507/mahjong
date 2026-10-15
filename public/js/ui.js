@@ -6,7 +6,7 @@
 
   function areaHTML(player, isMe) {
     if (!player) return '';
-    const melds = (player.melds || []).map((m) => `<span class="text-xs bg-slate-700 px-2 py-1 rounded mr-1">${(m.tiles || []).join(' ')}</span>`).join('');
+    const melds = (player.melds || []).map((m) => `<span class="meld" title="${escapeHtml(m.type)}">${(m.tiles || []).map((tile) => core().tileHTML(tile, 'meld-tile', false)).join('')}</span>`).join('');
     let handHTML = '';
     if (isMe && player.hand) {
       handHTML = player.hand.map((t) => core().tileHTML(t)).join('');
@@ -14,7 +14,7 @@
       handHTML = `<span class="text-slate-300">${player.handCount || 0} batu</span>`;
     }
     return `
-      <div class="text-sm font-semibold mb-1">${escapeHtml(player.name)}${player.isBot ? ' 🤖' : ''} · ${player.score || 0} poin</div>
+      <div class="text-sm font-semibold mb-1">${escapeHtml(player.name)}${player.isBot ? ' 🤖' : ''}${player.disconnected ? ' · offline' : ''} · ${player.score || 0} poin</div>
       <div class="flex flex-wrap items-center gap-1 mb-1">${melds}</div>
       <div class="flex flex-wrap">${handHTML}</div>
     `;
@@ -27,7 +27,8 @@
     byId('roomLabel').textContent = state.code;
     byId('phaseLabel').textContent = `${state.phase} · ronde ${state.round || 1}`;
     byId('wallLabel').textContent = state.wallCount;
-    byId('lastDiscard').textContent = state.lastDiscard ? `${state.lastDiscard.tile} (p${state.lastDiscard.by})` : '-';
+    byId('lastDiscard').innerHTML = state.lastDiscard ? core().tileHTML(state.lastDiscard.tile, 'discard-tile', false) : '<span class="text-slate-400">-</span>';
+    byId('discardRiver').innerHTML = (state.discardsTail || []).map((discard, index, all) => core().tileHTML(discard.tile, index === all.length - 1 ? 'discard-tile latest' : 'discard-tile', false)).join('');
 
     const players = state.players || [];
     const myId = (global.Client && global.Client.myId) || (global.__myId);
@@ -35,10 +36,10 @@
     if (myIndex < 0) myIndex = 0;
 
     const idx = (o) => (myIndex + o) % players.length;
-    const top = players[idx(2)];
-    const right = players[idx(1)];
+    const top = players.length === 2 ? players[idx(1)] : (players.length === 4 ? players[idx(2)] : null);
+    const right = players.length >= 3 ? players[idx(1)] : null;
     const bottom = players[idx(0)];
-    const left = players[idx(3)];
+    const left = players.length === 4 ? players[idx(3)] : (players.length === 3 ? players[idx(2)] : null);
 
     byId('topArea').innerHTML = areaHTML(top, false);
     byId('rightArea').innerHTML = areaHTML(right, false);

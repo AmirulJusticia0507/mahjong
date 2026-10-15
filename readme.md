@@ -1,6 +1,6 @@
 # Online Multiplayer Mahjong
 
-Game Mahjong real-time berbasis Node.js, Express, Socket.io, dan JavaScript vanilla. Aplikasi mendukung 2–4 pemain, bot pengisi, room privat, reconnect, klaim Chi/Pong/Gang/Hu, ronde lanjutan, skor dasar, dan chat.
+Game Mahjong real-time berbasis Node.js, Express, Socket.io, dan JavaScript vanilla. Aplikasi mendukung 2–4 pemain, bot pengisi, room privat, reconnect, klaim Chi/Pong/Gang/Hu, ronde lanjutan, skor dasar, chat, serta tampilan batu menggunakan glyph Unicode Mahjong standar.
 
 ## Persyaratan
 

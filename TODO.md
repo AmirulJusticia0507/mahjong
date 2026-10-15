@@ -91,7 +91,7 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 - [x] Layout lobby: create/join room, nama, total pemain 2–4.
 - [x] Layout game: papan 4 kursi relatif ke pemain, wall count, last discard, meld area, chat, action buttons.
 - [x] Daftar room aktif yang menunggu pemain dan dapat dipilih dari lobby.
-- [x] Responsif dasar via Tailwind (CDN).
+- [x] Layout responsif untuk desktop dan mobile via Tailwind + CSS custom.
 
 ### 5.2 `public/js/client.js`
 - [x] Koneksi Socket.io + lobby create/join/leave.
@@ -101,21 +101,21 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 - [x] Tombol Keluar Room & kembali ke lobby.
 
 ### 5.3 `public/js/ui.js`
-- [x] Rendering tile dasar (bukan sprite, teks code).
-- [x] Transisi pemilihan tile dan feedback visual sederhana.
+- [x] Rendering batu bergaya fisik memakai glyph Unicode Mahjong standar, label aksesibel, dan kode fallback.
+- [x] Animasi masuk batu, discard terbaru, seleksi, dan reduced-motion fallback.
 - [x] Hand sorting & selection dasar.
 - [x] Highlight/enable klaim valid & konfirmasi Hu dari tangan.
 - [x] Log dan toast error.
 
 ### 5.4 `public/js/mahjongCore.js`
-- [x] Mapping tile code ↔ label/warna.
+- [x] Mapping tile code ↔ label, suit, dan glyph Mahjong asli.
 - [x] Helper sorting data engine (server) & tile mapping client.
 - [x] Preview kemampuan aksi dikalkulasi server dan dikirim sebagai `capabilities` agar tidak menduplikasi aturan.
 
 ### 5.5 `public/css/style.css`
 - [x] Styling memakai Tailwind CDN dan CSS custom tanpa build step.
 - [x] Styling utama via utility class Tailwind di HTML.
-- [x] Custom tile size, selection state, dan layout mobile dasar.
+- [x] Custom tile fisik, meld/discard river, selection state, dan layout mobile.
 
 ## 6. Bot/AI (Opsional)
 
@@ -168,7 +168,10 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 - [x] Reconnect berbasis token & timeout per giliran.
 
 **Milestone 5 — Polish**
-- [ ] Animasi, responsive penuh, testing lanjutan, dokumentasi.
+- [x] Tampilan batu Mahjong, animasi interaksi, dan discard river.
+- [x] Layout responsif mobile/desktop dan reduced-motion accessibility.
+- [x] Unit/integration test lanjutan, CI, dokumentasi, Docker, dan PM2.
+- [ ] QA manual multiplayer lintas browser/perangkat nyata.
 
 ---
 

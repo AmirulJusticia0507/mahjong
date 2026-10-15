@@ -53,7 +53,7 @@
       <button id="leaveBtn" class="bg-rose-600 hover:bg-rose-500 px-3 py-1 rounded">Keluar Room</button>
     </div>
 
-    <div class="grid grid-cols-3 gap-2 mb-4">
+    <div class="game-board grid grid-cols-3 gap-2 mb-4">
       <div class="col-start-2 bg-slate-800 rounded p-2 text-center" id="topArea"></div>
       <div class="row-start-2 bg-slate-800 rounded p-2" id="leftArea"></div>
       <div class="row-start-2 col-start-3 bg-slate-800 rounded p-2" id="rightArea"></div>
@@ -62,6 +62,7 @@
 
     <div class="bg-slate-800 rounded p-3 mb-3">
       <div class="mb-2">Last discard: <span id="lastDiscard" class="font-bold"></span></div>
+      <div id="discardRiver" class="discard-river mb-3" aria-label="Riwayat discard terakhir"></div>
       <div class="flex flex-wrap gap-2">
         <button id="discardSelectedBtn" class="bg-amber-600 hover:bg-amber-500 px-3 py-1 rounded">Buang Pilihan</button>
         <button data-claim="chi" class="claimBtn bg-purple-600 hover:bg-purple-500 px-3 py-1 rounded">Chi</button>
