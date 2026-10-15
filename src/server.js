@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const { RoomManager } = require('./RoomManager');
+const logger = require('./logger');
 
 const PORT = process.env.PORT || 3000;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
@@ -15,6 +16,7 @@ const manager = new RoomManager();
 
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/api/rooms', (_req, res) => res.json(manager.listRooms().filter((room) => room.status === 'waiting')));
 
 function cleanName(value) {
   return String(value || 'Player').replace(/[\u0000-\u001F\u007F<>]/g, '').trim().slice(0, 24) || 'Player';
@@ -285,8 +287,13 @@ io.on('connection', (socket) => {
 const cleanupTimer = setInterval(() => manager.removeInactiveRooms(ROOM_IDLE_MS), Math.min(ROOM_IDLE_MS, 60000));
 cleanupTimer.unref();
 
+app.use((error, _req, res, _next) => {
+  logger.error('Unhandled HTTP error', { error: error.message });
+  res.status(500).json({ error: 'Internal server error' });
+});
+
 function shutdown(signal) {
-  console.log(`${signal} received, shutting down`);
+  logger.info('Shutdown requested', { signal });
   clearInterval(cleanupTimer);
   for (const room of manager.rooms.values()) room.clearTimers();
   io.close(() => server.close(() => process.exit(0)));
@@ -302,7 +309,7 @@ function start(port = PORT) {
     server.listen(port, () => {
       server.off('error', reject);
       const address = server.address();
-      console.log(`Mahjong server listening on http://localhost:${address.port}`);
+      logger.info('Mahjong server listening', { port: address.port });
       resolve(address);
     });
   });
@@ -321,6 +328,16 @@ function stop() {
   });
 }
 
-if (require.main === module) start();
+if (require.main === module) {
+  process.on('unhandledRejection', (error) => logger.error('Unhandled rejection', { error: String(error) }));
+  process.on('uncaughtException', (error) => {
+    logger.error('Uncaught exception', { error: error.stack || error.message });
+    shutdown('uncaughtException');
+  });
+  start().catch((error) => {
+    logger.error('Server failed to start', { error: error.message });
+    process.exit(1);
+  });
+}
 
 module.exports = { app, server, io, manager, start, stop };

@@ -90,7 +90,7 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 ### 5.1 `public/index.html`
 - [x] Layout lobby: create/join room, nama, total pemain 2–4.
 - [x] Layout game: papan 4 kursi relatif ke pemain, wall count, last discard, meld area, chat, action buttons.
-- [ ] Daftar room aktif.
+- [x] Daftar room aktif yang menunggu pemain dan dapat dipilih dari lobby.
 - [x] Responsif dasar via Tailwind (CDN).
 
 ### 5.2 `public/js/client.js`
@@ -130,8 +130,8 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 - [x] Server-authoritative: semua validasi game di server.
 - [x] Rate limiting socket & validasi tipe/ukuran payload dasar.
 - [x] Sanitasi chat pada rendering client (escape HTML).
-- [ ] Logging/observability terstruktur.
-- [ ] Error boundary global.
+- [x] Logging JSON terstruktur untuk lifecycle dan error server.
+- [x] Error boundary HTTP serta handler rejection/exception pada proses utama.
 - [x] Graceful shutdown untuk SIGINT/SIGTERM.
 
 ## 8. Testing & QA

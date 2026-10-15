@@ -9,6 +9,27 @@
   const game = document.getElementById('game');
   const status = document.getElementById('lobbyStatus');
 
+  async function refreshRooms() {
+    const list = document.getElementById('roomList');
+    try {
+      const response = await fetch('/api/rooms');
+      const rooms = await response.json();
+      list.textContent = '';
+      if (!rooms.length) { list.textContent = 'Belum ada room menunggu.'; return; }
+      rooms.forEach((room) => {
+        const button = document.createElement('button');
+        button.className = 'w-full flex justify-between rounded bg-slate-700 p-2 hover:bg-slate-600';
+        button.innerHTML = `<span>${escapeHtml(room.code)}</span><span>${room.players}/${room.maxPlayers}</span>`;
+        button.addEventListener('click', () => { document.getElementById('roomCode').value = room.code; });
+        list.appendChild(button);
+      });
+    } catch (_) { list.textContent = 'Daftar room tidak tersedia.'; }
+  }
+
+  document.getElementById('refreshRoomsBtn').addEventListener('click', refreshRooms);
+  refreshRooms();
+  setInterval(() => { if (!lobby.classList.contains('hidden')) refreshRooms(); }, 10000);
+
   function showGame() {
     lobby.classList.add('hidden');
     game.classList.remove('hidden');

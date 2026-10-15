@@ -51,6 +51,8 @@ test('socket create, join, private state, and leave flow', { timeout: 10000 }, a
   const created = await emitAck(host, 'createRoom', { name: '<Host>', maxPlayers: 2 });
   assert.equal(created.ok, true);
   assert.match(created.code, /^[A-Z0-9]{6}$/);
+  const rooms = await fetch(`${url}/api/rooms`).then((response) => response.json());
+  assert.equal(rooms.some((room) => room.code === created.code && room.players === 1), true);
 
   const playingHostPromise = waitForState(host, (state) => state.status === 'playing');
   const playingGuestPromise = waitForState(guest, (state) => state.status === 'playing');

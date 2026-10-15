@@ -116,3 +116,11 @@ test('private state exposes only valid viewer actions', (t) => {
   assert.equal(state.capabilities.pass, true);
   assert.equal(state.players[1].hand, undefined);
 });
+
+test('room listing exposes counts without private player data', () => {
+  const { RoomManager } = require('./RoomManager');
+  const manager = new RoomManager();
+  const room = manager.createRoom(4);
+  room.addPlayer('p0', 'Host');
+  assert.deepEqual(manager.listRooms(), [{ code: room.code, status: 'waiting', players: 1, maxPlayers: 4 }]);
+});

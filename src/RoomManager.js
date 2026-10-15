@@ -580,6 +580,14 @@ class RoomManager {
       }
     }
   }
+  listRooms() {
+    return [...this.rooms.values()].map((room) => ({
+      code: room.code,
+      status: room.status,
+      players: room.players.filter((player) => !player.isBot).length,
+      maxPlayers: room.maxPlayers,
+    }));
+  }
 }
 
 module.exports = { RoomManager, Room };
