@@ -296,6 +296,31 @@ function shutdown(signal) {
 process.once('SIGINT', () => shutdown('SIGINT'));
 process.once('SIGTERM', () => shutdown('SIGTERM'));
 
-server.listen(PORT, () => {
-  console.log(`Mahjong server listening on http://localhost:${PORT}`);
-});
+function start(port = PORT) {
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, () => {
+      server.off('error', reject);
+      const address = server.address();
+      console.log(`Mahjong server listening on http://localhost:${address.port}`);
+      resolve(address);
+    });
+  });
+}
+
+function stop() {
+  return new Promise((resolve) => {
+    for (const room of manager.rooms.values()) room.clearTimers();
+    io.disconnectSockets(true);
+    server.unref();
+    io.close(() => {
+      if (server.listening) server.close(resolve);
+      else resolve();
+    });
+    if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
+  });
+}
+
+if (require.main === module) start();
+
+module.exports = { app, server, io, manager, start, stop };

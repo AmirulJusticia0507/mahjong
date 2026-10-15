@@ -184,12 +184,8 @@
   socket.on('updateGameState', (s) => {
     state = s;
     selectedTile = null;
-    if (s.hostId === myId) {
-      document.getElementById('startBtn').classList.remove('hidden');
-    } else {
-      document.getElementById('startBtn').classList.add('hidden');
-    }
-    if (s.status === 'waiting') document.getElementById('startBtn').classList.remove('hidden');
+    const canStart = s.status === 'waiting' && s.hostId === myId;
+    document.getElementById('startBtn').classList.toggle('hidden', !canStart);
     document.getElementById('nextRoundBtn').classList.toggle('hidden', !(s.status === 'finished' && s.hostId === myId));
     window.UI.render(s);
   });

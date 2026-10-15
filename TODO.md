@@ -138,7 +138,7 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 
 - [x] Unit test `MahjongEngine` dasar (deck, shuffle, Chi/Pong/Gang).
 - [x] QA browser dasar (render tanpa console error, create/join, start game, tombol keluar).
-- [ ] Integration test socket events (create/join/discard/claim/leave).
+- [x] Integration test Socket.io untuk create, join, state privat, discard, pass claim, reconnect, dan leave.
 - [ ] Manual QA multiplayer 2–4 tab + disconnect scenarios.
 - [ ] Cross-browser & mobile responsiveness.
 - [ ] Performance test (10+ rooms).
@@ -146,6 +146,7 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 ## 9. Dokumentasi & DevEx
 
 - [x] Package scripts dasar (`start`, `dev`, `test`).
+- [x] CI menjalankan install, test, dan syntax check pada Node.js 20.
 - [ ] Perbarui README sesuai implementasi final.
 - [ ] Dokumentasi event payload & state schema.
 - [ ] Deploy (PM2/Docker) opsional.
