@@ -1,6 +1,8 @@
 (function (global) {
   const byId = (id) => document.getElementById(id);
   const core = () => global.MahjongCore;
+  let lastResultKey = null;
+  let deadlineTimer = null;
 
   function areaHTML(player, isMe) {
     if (!player) return '';
@@ -44,16 +46,53 @@
     byId('bottomArea').innerHTML = areaHTML(bottom, true);
 
     // winner
-    if (state.status === 'finished') {
+    const resultKey = `${state.round}:${state.status}:${state.result}:${state.winner}`;
+    if (state.status === 'finished' && lastResultKey !== resultKey) {
+      lastResultKey = resultKey;
       const gl = byId('gameLog');
       const line = document.createElement('div');
       line.textContent = state.result === 'win' ? `🏆 Pemain ${state.winner} menang!` : '🤝 Seri (wall habis)';
       gl.appendChild(line);
     }
 
-    // enable claim buttons only in claim phase
-    const claimPhase = state.phase === 'claim';
-    document.querySelectorAll('.claimBtn').forEach((b) => { b.disabled = !claimPhase; b.classList.toggle('opacity-50', !claimPhase); });
+    const caps = state.capabilities || {};
+    document.querySelectorAll('.claimBtn').forEach((button) => {
+      const enabled = !!caps[button.getAttribute('data-claim')];
+      button.disabled = !enabled;
+      button.classList.toggle('opacity-50', !enabled);
+    });
+    setEnabled('passBtn', caps.pass);
+    setEnabled('discardSelectedBtn', caps.discard);
+    setEnabled('declareGangBtn', caps.concealedGang);
+    setEnabled('declareHuBtn', caps.selfHu);
+    startDeadline(state.deadline);
+  }
+
+  function setEnabled(id, enabled) {
+    const element = byId(id);
+    element.disabled = !enabled;
+    element.classList.toggle('opacity-50', !enabled);
+  }
+
+  function startDeadline(deadline) {
+    if (deadlineTimer) clearInterval(deadlineTimer);
+    const label = byId('timerLabel');
+    if (!deadline) { label.textContent = ''; deadlineTimer = null; return; }
+    const update = () => {
+      const remaining = Math.max(0, deadline - Date.now());
+      label.textContent = `${Math.ceil(remaining / 1000)}s`;
+      if (remaining <= 0 && deadlineTimer) clearInterval(deadlineTimer);
+    };
+    update();
+    deadlineTimer = setInterval(update, 250);
+  }
+
+  function toast(message, type = 'info') {
+    const element = byId('toast');
+    element.textContent = String(message);
+    element.className = `toast ${type}`;
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => element.classList.add('hidden'), 3000);
   }
 
   // bind tile clicks for discard
@@ -61,8 +100,8 @@
     const t = e.target && e.target.getAttribute && e.target.getAttribute('data-tile');
     if (!t) return;
     const client = global.Client;
-    if (client && typeof client.discard === 'function') client.discard(t);
+    if (client && typeof client.selectTile === 'function') client.selectTile(t, e.target);
   });
 
-  global.UI = { render, escapeHtml };
+  global.UI = { render, escapeHtml, toast };
 })(window);

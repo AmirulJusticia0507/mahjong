@@ -3,6 +3,7 @@
   let roomCode = null;
   let myId = null;
   let state = null;
+  let selectedTile = null;
 
   const lobby = document.getElementById('lobby');
   const game = document.getElementById('game');
@@ -31,7 +32,19 @@
       if (state.currentTurn !== myIndex) return;
       socket.emit('discardTile', { code: roomCode, tile: tile });
     },
+    selectTile: function (tile, element) {
+      const wasSelected = element.classList.contains('selected');
+      document.querySelectorAll('.tile.selected').forEach((el) => el.classList.remove('selected'));
+      selectedTile = wasSelected ? null : tile;
+      if (selectedTile) element.classList.add('selected');
+    },
   };
+
+  document.getElementById('discardSelectedBtn').addEventListener('click', () => {
+    if (!selectedTile) return window.UI.toast('Pilih batu terlebih dahulu.');
+    window.Client.discard(selectedTile);
+    selectedTile = null;
+  });
 
   // Lobby buttons
   document.getElementById('createBtn').addEventListener('click', () => {
@@ -160,6 +173,7 @@
   socket.on('errorMessage', (msg) => {
     if (!game.classList.contains('hidden')) log(`⚠️ ${msg}`);
     else status.textContent = msg;
+    window.UI.toast(msg, 'error');
   });
 
   socket.on('gameStarted', (data) => {
@@ -169,6 +183,7 @@
 
   socket.on('updateGameState', (s) => {
     state = s;
+    selectedTile = null;
     if (s.hostId === myId) {
       document.getElementById('startBtn').classList.remove('hidden');
     } else {

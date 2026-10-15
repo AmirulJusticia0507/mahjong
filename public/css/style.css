@@ -1,0 +1,46 @@
+button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(.45);
+}
+
+.tile {
+  min-width: 2.5rem;
+  min-height: 3.25rem;
+  border: 2px solid rgba(255, 255, 255, .2);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .3);
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.tile:hover,
+.tile.selected {
+  transform: translateY(-6px);
+  border-color: #fde68a;
+  box-shadow: 0 8px 14px rgba(0, 0, 0, .35);
+}
+
+.toast {
+  position: fixed;
+  z-index: 50;
+  right: 1rem;
+  bottom: 1rem;
+  max-width: min(24rem, calc(100vw - 2rem));
+  border-radius: .5rem;
+  background: #0369a1;
+  padding: .75rem 1rem;
+  color: white;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+}
+
+.toast.error { background: #be123c; }
+.toast.hidden { display: none; }
+
+@media (max-width: 640px) {
+  #game { margin-top: .5rem; padding: .5rem; }
+  #game > .flex { align-items: flex-start; flex-wrap: wrap; gap: .5rem; }
+  #game > .grid:last-of-type { grid-template-columns: 1fr; }
+  .tile { min-width: 2.15rem; min-height: 2.8rem; margin: .15rem; padding: .25rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile { transition: none; }
+}

@@ -103,3 +103,16 @@ test('self-draw Hu awards basic score and host starts next round', (t) => {
   assert.equal(room.round, 2);
   assert.equal(room.status, 'playing');
 });
+
+test('private state exposes only valid viewer actions', (t) => {
+  const room = roomWithPlayers(3);
+  t.after(() => room.clearTimers());
+  room.status = 'playing';
+  room.phase = 'claim';
+  room.claimState = { tile: 'B1', by: 2, claims: [], responses: new Set() };
+  room.players[0].hand = ['B2', 'B3'];
+  const state = room.toState('p0');
+  assert.equal(state.capabilities.chi, true);
+  assert.equal(state.capabilities.pass, true);
+  assert.equal(state.players[1].hand, undefined);
+});

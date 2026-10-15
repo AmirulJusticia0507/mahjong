@@ -97,15 +97,15 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 - [x] Koneksi Socket.io + lobby create/join/leave.
 - [x] Event listeners & emit discard/claim/chat.
 - [x] State management lokal & update UI.
-- [ ] Timer klaim countdown & disable action saat bukan giliran.
+- [x] Timer klaim/giliran countdown & disable action berdasarkan kemampuan dari server.
 - [x] Tombol Keluar Room & kembali ke lobby.
 
 ### 5.3 `public/js/ui.js`
 - [x] Rendering tile dasar (bukan sprite, teks code).
-- [ ] Animasi draw/discard.
+- [x] Transisi pemilihan tile dan feedback visual sederhana.
 - [x] Hand sorting & selection dasar.
-- [ ] Highlight klaim valid & modal konfirmasi Hu.
-- [x] Log/toast dasar.
+- [x] Highlight/enable klaim valid & konfirmasi Hu dari tangan.
+- [x] Log dan toast error.
 
 ### 5.4 `public/js/mahjongCore.js`
 - [x] Mapping tile code ↔ label/warna.
@@ -115,7 +115,7 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 ### 5.5 `public/css/style.css`
 - [ ] Tailwind directives/PostCSS build.
 - [x] Styling utama via utility class Tailwind di HTML.
-- [ ] Custom tile size/orientation.
+- [x] Custom tile size, selection state, dan layout mobile dasar.
 
 ## 6. Bot/AI (Opsional)
 

@@ -46,6 +46,8 @@ class Room {
     this.claimState = null;
     this.claimTimer = null;
     this.turnTimer = null;
+    this.claimDeadline = null;
+    this.turnDeadline = null;
     this.winner = null;
     this.result = null;
     this.winType = null;
@@ -222,6 +224,7 @@ class Room {
   clearTurnTimer() {
     if (this.turnTimer) clearTimeout(this.turnTimer);
     this.turnTimer = null;
+    this.turnDeadline = null;
   }
 
   clearTimers() {
@@ -229,6 +232,7 @@ class Room {
     this.clearTurnTimer();
     if (this.claimTimer) clearTimeout(this.claimTimer);
     this.claimTimer = null;
+    this.claimDeadline = null;
   }
 
   findPlayerIndex(id) {
@@ -283,6 +287,7 @@ class Room {
 
   startClaimWindow() {
     if (this.claimTimer) clearTimeout(this.claimTimer);
+    this.claimDeadline = Date.now() + CLAIM_TIMEOUT_MS;
     this.claimTimer = setTimeout(() => this.resolveClaims(), CLAIM_TIMEOUT_MS);
   }
 
@@ -408,6 +413,7 @@ class Room {
   resolveClaims() {
     if (this.phase !== 'claim' || !this.claimState) return;
     if (this.claimTimer) { clearTimeout(this.claimTimer); this.claimTimer = null; }
+    this.claimDeadline = null;
     this.clearBotTimers();
 
     const { tile, by, claims } = this.claimState;
@@ -475,6 +481,7 @@ class Room {
       this.clearTurnTimer();
       if (p) {
         const delay = p.isBot ? BOT_DELAY_MS : TURN_TIMEOUT_MS;
+        this.turnDeadline = Date.now() + delay;
         const t = setTimeout(() => {
           if (this.status !== 'playing' || this.phase !== 'discard') return;
           const tile = chooseBotDiscard(p.hand);
@@ -513,6 +520,24 @@ class Room {
 
   toState(viewerId) {
     const viewer = this.players.find((p) => p.id === viewerId);
+    const viewerIndex = this.findPlayerIndex(viewerId);
+    const capabilities = { discard: false, chi: false, pong: false, gang: false, hu: false, pass: false, concealedGang: false, selfHu: false };
+    if (viewer) {
+      capabilities.discard = this.status === 'playing' && this.phase === 'discard' && viewerIndex === this.currentTurn;
+      capabilities.selfHu = capabilities.discard && isWinningHand(viewer.hand, viewer.melds.length);
+      capabilities.concealedGang = capabilities.discard && (
+        [...new Set(viewer.hand)].some((tile) => viewer.hand.filter((t) => t === tile).length >= 4)
+        || viewer.melds.some((m) => m.type === 'pong' && viewer.hand.includes(m.tiles[0]))
+      );
+      if (this.phase === 'claim' && this.claimState && viewerIndex !== this.claimState.by) {
+        const tile = this.claimState.tile;
+        capabilities.chi = viewerIndex === (this.claimState.by + 1) % this.players.length && !!validateChi(viewer.hand, tile);
+        capabilities.pong = validatePong(viewer.hand, tile);
+        capabilities.gang = validateGang(viewer.hand, tile);
+        capabilities.hu = isWinningHand(viewer.hand.concat([tile]), viewer.melds.length);
+        capabilities.pass = true;
+      }
+    }
     return {
       code: this.code,
       status: this.status,
@@ -539,6 +564,8 @@ class Room {
       round: this.round,
       yourHand: viewer ? viewer.hand : [],
       reconnectToken: viewer ? viewer.reconnectToken : null,
+      capabilities,
+      deadline: this.phase === 'claim' ? this.claimDeadline : this.turnDeadline,
     };
   }
 }
