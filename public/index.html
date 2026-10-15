@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mahjong Multiplayer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen">
+  <div id="lobby" class="max-w-md mx-auto mt-10 p-6 bg-slate-800 rounded-xl shadow-lg">
+    <h1 class="text-2xl font-bold mb-4 text-center">🀄 Mahjong Multiplayer</h1>
+    <label class="block mb-1 text-sm">Nama</label>
+    <input id="name" class="w-full mb-3 p-2 rounded bg-slate-700" placeholder="Nama pemain" />
+    <label class="block mb-1 text-sm">Kode Room (untuk join)</label>
+    <input id="roomCode" class="w-full mb-4 p-2 rounded bg-slate-700 uppercase" placeholder="ABC123" />
+    <div class="flex gap-2">
+      <button id="createBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-500 p-2 rounded font-semibold">Buat Room</button>
+      <button id="joinBtn" class="flex-1 bg-sky-600 hover:bg-sky-500 p-2 rounded font-semibold">Join Room</button>
+    </div>
+    <p id="lobbyStatus" class="mt-3 text-sm text-slate-300"></p>
+  </div>
+
+  <div id="game" class="hidden max-w-6xl mx-auto mt-6 p-4">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <span class="text-sm text-slate-400">Room:</span>
+        <span id="roomLabel" class="font-bold"></span>
+      </div>
+      <div>
+        <span class="text-sm text-slate-400">Phase:</span>
+        <span id="phaseLabel" class="font-bold"></span>
+      </div>
+      <div>
+        <span class="text-sm text-slate-400">Wall:</span>
+        <span id="wallLabel" class="font-bold"></span>
+      </div>
+      <button id="startBtn" class="hidden bg-amber-600 hover:bg-amber-500 px-3 py-1 rounded">Start (host)</button>
+    </div>
+
+    <div class="grid grid-cols-3 gap-2 mb-4">
+      <div class="col-start-2 bg-slate-800 rounded p-2 text-center" id="topArea"></div>
+      <div class="row-start-2 bg-slate-800 rounded p-2" id="leftArea"></div>
+      <div class="row-start-2 col-start-3 bg-slate-800 rounded p-2" id="rightArea"></div>
+      <div class="row-start-3 col-span-3 bg-slate-800 rounded p-2" id="bottomArea"></div>
+    </div>
+
+    <div class="bg-slate-800 rounded p-3 mb-3">
+      <div class="mb-2">Last discard: <span id="lastDiscard" class="font-bold"></span></div>
+      <div class="flex flex-wrap gap-2">
+        <button data-claim="chi" class="claimBtn bg-purple-600 hover:bg-purple-500 px-3 py-1 rounded">Chi</button>
+        <button data-claim="pong" class="claimBtn bg-purple-600 hover:bg-purple-500 px-3 py-1 rounded">Pong</button>
+        <button data-claim="gang" class="claimBtn bg-purple-600 hover:bg-purple-500 px-3 py-1 rounded">Gang</button>
+        <button data-claim="hu" class="claimBtn bg-rose-600 hover:bg-rose-500 px-3 py-1 rounded">Hu</button>
+        <button id="passBtn" class="bg-slate-600 hover:bg-slate-500 px-3 py-1 rounded">Pass</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-slate-800 rounded p-3">
+        <h3 class="font-semibold mb-2">Chat</h3>
+        <div id="chatLog" class="h-32 overflow-y-auto bg-slate-900 rounded p-2 text-sm mb-2"></div>
+        <div class="flex gap-2">
+          <input id="chatInput" class="flex-1 p-2 rounded bg-slate-700" placeholder="Pesan..." />
+          <button id="chatSend" class="bg-sky-600 hover:bg-sky-500 px-3 rounded">Kirim</button>
+        </div>
+      </div>
+      <div class="bg-slate-800 rounded p-3">
+        <h3 class="font-semibold mb-2">Log</h3>
+        <div id="gameLog" class="h-32 overflow-y-auto bg-slate-900 rounded p-2 text-sm"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/mahjongCore.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/client.js"></script>
+</body>
+</html>
