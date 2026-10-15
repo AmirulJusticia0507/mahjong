@@ -5,13 +5,35 @@ const path = require('path');
 const { RoomManager } = require('./RoomManager');
 
 const PORT = process.env.PORT || 3000;
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+const ROOM_IDLE_MS = Number(process.env.ROOM_IDLE_MS) || 60 * 60 * 1000;
+const MAX_ROOMS = Number(process.env.MAX_ROOMS) || 100;
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server, { cors: { origin: CORS_ORIGIN } });
 const manager = new RoomManager();
 
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+function cleanName(value) {
+  return String(value || 'Player').replace(/[\u0000-\u001F\u007F<>]/g, '').trim().slice(0, 24) || 'Player';
+}
+
+function validCode(value) { return /^[A-Z0-9]{6}$/.test(String(value || '').toUpperCase()); }
+function validTile(value) { return /^(?:[BKM][1-9]|W[ESWN]|D[RGW])$/.test(String(value || '')); }
+
+function allowEvent(socket, key, limit = 30, windowMs = 10000) {
+  const now = Date.now();
+  socket.data.rateLimits ||= {};
+  const entry = socket.data.rateLimits[key] || { start: now, count: 0 };
+  if (now - entry.start >= windowMs) { entry.start = now; entry.count = 0; }
+  entry.count += 1;
+  socket.data.rateLimits[key] = entry;
+  if (entry.count <= limit) return true;
+  socket.emit('errorMessage', 'Terlalu banyak permintaan. Coba lagi sebentar.');
+  return false;
+}
 
 function humanSockets(room) {
   const ids = [];
@@ -39,11 +61,16 @@ function broadcastEvent(room, event, payload) {
 
 io.on('connection', (socket) => {
   socket.on('createRoom', (data, ack) => {
+    if (!allowEvent(socket, 'room', 8)) return;
+    if (manager.rooms.size >= MAX_ROOMS) {
+      if (typeof ack === 'function') ack({ ok: false, error: 'Room limit reached' });
+      return;
+    }
     const maxPlayers = [2, 3, 4].includes(parseInt(data && data.maxPlayers, 10))
       ? parseInt(data.maxPlayers, 10)
       : 4;
     const room = manager.createRoom(maxPlayers);
-    const name = (data && data.name) || 'Player';
+    const name = cleanName(data && data.name);
     const res = room.addPlayer(socket.id, name);
     if (!res.ok) {
       socket.emit('errorMessage', res.error);
@@ -51,13 +78,18 @@ io.on('connection', (socket) => {
       return;
     }
     socket.join(room.code);
-    socket.emit('roomJoined', { code: room.code, player: res.player, maxPlayers: room.maxPlayers });
+    socket.emit('roomJoined', { code: room.code, player: res.player, maxPlayers: room.maxPlayers, reconnectToken: res.player.reconnectToken });
     broadcastState(room);
     if (typeof ack === 'function') ack({ ok: true, code: room.code, maxPlayers: room.maxPlayers });
   });
 
   socket.on('joinRoom', (data, ack) => {
+    if (!allowEvent(socket, 'room', 8)) return;
     const code = (data && data.code || '').toUpperCase();
+    if (!validCode(code)) {
+      if (typeof ack === 'function') ack({ ok: false, error: 'Invalid room code' });
+      return;
+    }
     const room = manager.getRoom(code);
     if (!room) {
       const msg = 'Room not found';
@@ -65,7 +97,7 @@ io.on('connection', (socket) => {
       if (typeof ack === 'function') ack({ ok: false, error: msg });
       return;
     }
-    const name = (data && data.name) || 'Player';
+    const name = cleanName(data && data.name);
     const res = room.addPlayer(socket.id, name);
     if (!res.ok) {
       socket.emit('errorMessage', res.error);
@@ -73,7 +105,7 @@ io.on('connection', (socket) => {
       return;
     }
     socket.join(room.code);
-    socket.emit('roomJoined', { code: room.code, player: res.player, maxPlayers: room.maxPlayers });
+    socket.emit('roomJoined', { code: room.code, player: res.player, maxPlayers: room.maxPlayers, reconnectToken: res.player.reconnectToken });
     broadcastState(room);
     broadcastEvent(room, 'playerJoined', { name: res.player.name });
     if (typeof ack === 'function') ack({ ok: true, code: room.code, maxPlayers: room.maxPlayers });
@@ -88,6 +120,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('startGame', (data) => {
+    if (!allowEvent(socket, 'game', 20)) return;
     const code = (data && data.code || '').toUpperCase();
     const room = manager.getRoom(code);
     if (!room) return socket.emit('errorMessage', 'Room not found');
@@ -99,9 +132,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('discardTile', (data) => {
+    if (!allowEvent(socket, 'game', 20)) return;
     const code = (data && data.code || '').toUpperCase();
     const room = manager.getRoom(code);
     if (!room) return socket.emit('errorMessage', 'Room not found');
+    if (!validTile(data && data.tile)) return socket.emit('errorMessage', 'Invalid tile');
     try {
       room.discardTile(socket.id, data.tile);
       broadcastState(room);
@@ -111,6 +146,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('actionClaim', (data) => {
+    if (!allowEvent(socket, 'game', 20)) return;
     const code = (data && data.code || '').toUpperCase();
     const room = manager.getRoom(code);
     if (!room) return socket.emit('errorMessage', 'Room not found');
@@ -120,6 +156,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('passClaim', (data) => {
+    if (!allowEvent(socket, 'game', 20)) return;
     const room = manager.getRoom((data && data.code || '').toUpperCase());
     if (!room) return socket.emit('errorMessage', 'Room not found');
     const res = room.passClaim(socket.id);
@@ -128,14 +165,17 @@ io.on('connection', (socket) => {
   });
 
   socket.on('declareGang', (data) => {
+    if (!allowEvent(socket, 'game', 20)) return;
     const room = manager.getRoom((data && data.code || '').toUpperCase());
     if (!room) return socket.emit('errorMessage', 'Room not found');
-    const res = room.declareGang(socket.id, data && data.tile);
+    if (!validTile(data && data.tile)) return socket.emit('errorMessage', 'Invalid tile');
+    const res = room.declareGang(socket.id, data.tile);
     if (!res.ok) socket.emit('errorMessage', res.error);
     broadcastState(room);
   });
 
   socket.on('chatMessage', (data) => {
+    if (!allowEvent(socket, 'chat', 10)) return;
     const code = (data && data.code || '').toUpperCase();
     const room = manager.getRoom(code);
     if (!room) return;
@@ -173,6 +213,35 @@ io.on('connection', (socket) => {
     broadcastState(target);
   });
 
+  socket.on('resumeSession', (data, ack) => {
+    if (!allowEvent(socket, 'room', 8)) return;
+    const code = String(data && data.code || '').toUpperCase();
+    const token = String(data && data.token || '');
+    if (!validCode(code) || !token) return typeof ack === 'function' && ack({ ok: false });
+    const room = manager.getRoom(code);
+    const player = room && room.reconnect(token, socket.id);
+    if (!player) return typeof ack === 'function' && ack({ ok: false });
+    socket.join(code);
+    socket.emit('roomResumed', { code, reconnectToken: token });
+    broadcastState(room);
+    if (typeof ack === 'function') ack({ ok: true, code });
+  });
+
+  socket.on('kickPlayer', (data) => {
+    const room = manager.getRoom((data && data.code || '').toUpperCase());
+    if (!room) return socket.emit('errorMessage', 'Room not found');
+    const targetId = String(data && data.playerId || '');
+    const res = room.kick(socket.id, targetId);
+    if (!res.ok) return socket.emit('errorMessage', res.error);
+    const targetSocket = io.sockets.sockets.get(targetId);
+    if (targetSocket) {
+      targetSocket.leave(room.code);
+      targetSocket.emit('kicked', { code: room.code });
+    }
+    broadcastEvent(room, 'playerLeft', { name: res.player.name });
+    broadcastState(room);
+  });
+
   socket.on('requestState', (data) => {
     const code = (data && data.code || '').toUpperCase();
     const room = manager.getRoom(code);
@@ -182,13 +251,32 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     for (const room of manager.rooms.values()) {
       if (room.players.some((p) => p.id === socket.id)) {
-        room.removePlayer(socket.id);
+        const res = room.disconnect(socket.id);
+        if (res.roomEmpty || room.players.every((p) => p.isBot && !p.disconnected)) {
+          room.clearTimers();
+          manager.rooms.delete(room.code);
+          continue;
+        }
         broadcastState(room);
       }
     }
     manager.removeEmptyRooms();
   });
 });
+
+const cleanupTimer = setInterval(() => manager.removeInactiveRooms(ROOM_IDLE_MS), Math.min(ROOM_IDLE_MS, 60000));
+cleanupTimer.unref();
+
+function shutdown(signal) {
+  console.log(`${signal} received, shutting down`);
+  clearInterval(cleanupTimer);
+  for (const room of manager.rooms.values()) room.clearTimers();
+  io.close(() => server.close(() => process.exit(0)));
+  setTimeout(() => process.exit(1), 5000).unref();
+}
+
+process.once('SIGINT', () => shutdown('SIGINT'));
+process.once('SIGTERM', () => shutdown('SIGTERM'));
 
 server.listen(PORT, () => {
   console.log(`Mahjong server listening on http://localhost:${PORT}`);

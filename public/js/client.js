@@ -105,7 +105,13 @@
   });
 
   // Socket events
-  socket.on('connect', () => { setMyId(socket.id); });
+  socket.on('connect', () => {
+    setMyId(socket.id);
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('mahjongSession') || 'null');
+      if (saved && saved.code && saved.token) socket.emit('resumeSession', saved);
+    } catch (_) { sessionStorage.removeItem('mahjongSession'); }
+  });
 
   socket.on('roomJoined', (data) => {
     roomCode = data.code;
@@ -114,6 +120,15 @@
     document.getElementById('roomLabel').textContent = data.code;
     document.getElementById('leaveBtn').classList.remove('hidden');
     log(`Bergabung ke room ${data.code}`);
+    sessionStorage.setItem('mahjongSession', JSON.stringify({ code: data.code, token: data.reconnectToken }));
+  });
+
+  socket.on('roomResumed', (data) => {
+    roomCode = data.code;
+    setMyId(socket.id);
+    showGame();
+    document.getElementById('roomLabel').textContent = data.code;
+    log(`Sesi room ${data.code} dipulihkan`);
   });
 
   socket.on('roomLeft', () => {
@@ -122,6 +137,16 @@
     game.classList.add('hidden');
     lobby.classList.remove('hidden');
     status.textContent = 'Kamu keluar dari room.';
+    sessionStorage.removeItem('mahjongSession');
+  });
+
+  socket.on('kicked', () => {
+    sessionStorage.removeItem('mahjongSession');
+    roomCode = null;
+    state = null;
+    game.classList.add('hidden');
+    lobby.classList.remove('hidden');
+    status.textContent = 'Kamu dikeluarkan oleh host.';
   });
 
   socket.on('errorMessage', (msg) => {

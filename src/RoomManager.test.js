@@ -60,3 +60,32 @@ test('concealed gang draws a replacement tile', (t) => {
   assert.deepEqual(room.players[0].melds[0], { type: 'gang', tiles: ['B1', 'B1', 'B1', 'B1'] });
   assert.deepEqual(room.players[0].hand, ['K9']);
 });
+
+test('playing player can reconnect using their private token', (t) => {
+  const room = roomWithPlayers(2);
+  t.after(() => room.clearTimers());
+  room.status = 'playing';
+  const token = room.players[0].reconnectToken;
+  room.disconnect('p0');
+  assert.equal(room.players[0].disconnected, true);
+  const player = room.reconnect(token, 'p0-new');
+  assert.equal(player.id, 'p0-new');
+  assert.equal(player.isBot, false);
+  assert.equal(player.disconnected, false);
+});
+
+test('host can kick a waiting player', () => {
+  const room = roomWithPlayers(2);
+  assert.equal(room.kick('p0', 'p1').ok, true);
+  assert.equal(room.players.length, 1);
+  assert.equal(room.kick('p0', 'p0').ok, false);
+});
+
+test('inactive room cleanup removes old rooms', () => {
+  const { RoomManager } = require('./RoomManager');
+  const manager = new RoomManager();
+  const room = manager.createRoom(2);
+  room.updatedAt = 1;
+  manager.removeInactiveRooms(1000);
+  assert.equal(manager.rooms.size, 0);
+});

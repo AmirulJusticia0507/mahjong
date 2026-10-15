@@ -12,6 +12,7 @@ const {
   removeForGang,
   isSuited,
 } = require('./MahjongEngine');
+const crypto = require('crypto');
 
 const CLAIM_TIMEOUT_MS = Number(process.env.CLAIM_TIMEOUT_MS) || 5000;
 const TURN_TIMEOUT_MS = Number(process.env.TURN_TIMEOUT_MS) || 30000;
@@ -48,14 +49,24 @@ class Room {
     this.winner = null;
     this.result = null;
     this.botTimers = [];
+    this.updatedAt = Date.now();
   }
 
   addPlayer(socketId, name) {
     if (this.status !== 'waiting') return { ok: false, error: 'Game already started' };
     if (this.players.length >= this.maxPlayers) return { ok: false, error: 'Room full' };
     if (this.players.some((p) => p.id === socketId)) return { ok: false, error: 'Already in room' };
-    const player = { id: socketId, name: name || `Player${this.players.length + 1}`, hand: [], melds: [], isBot: false };
+    const player = {
+      id: socketId,
+      name: name || `Player${this.players.length + 1}`,
+      hand: [],
+      melds: [],
+      isBot: false,
+      disconnected: false,
+      reconnectToken: crypto.randomUUID(),
+    };
     this.players.push(player);
+    this.touch();
     if (!this.hostId) this.hostId = socketId;
     return { ok: true, player };
   }
@@ -63,8 +74,9 @@ class Room {
   addBot(name) {
     if (this.players.length >= this.maxPlayers) return null;
     const idx = this.players.length;
-    const player = { id: `bot-${idx}-${Date.now()}`, name: name || `Bot${idx + 1}`, hand: [], melds: [], isBot: true };
+    const player = { id: `bot-${idx}-${Date.now()}`, name: name || `Bot${idx + 1}`, hand: [], melds: [], isBot: true, disconnected: false, reconnectToken: null };
     this.players.push(player);
+    this.touch();
     return player;
   }
 
@@ -96,6 +108,7 @@ class Room {
     if (idx < 0) return { left: null, roomEmpty: this.players.length === 0 };
 
     const leaving = this.players[idx];
+    this.touch();
 
     if (this.status === 'playing') {
       // keep seat as bot so game can continue
@@ -117,6 +130,48 @@ class Room {
     if (this.hostId === socketId) this.hostId = this.players[0] ? this.players[0].id : null;
     return { left: leaving, roomEmpty: this.players.length === 0 };
   }
+
+  disconnect(socketId) {
+    const idx = this.players.findIndex((p) => p.id === socketId);
+    if (idx < 0) return { left: null, roomEmpty: this.players.length === 0 };
+    if (this.status !== 'playing') return this.leave(socketId);
+
+    const player = this.players[idx];
+    player.id = `offline-${idx}-${Date.now()}`;
+    player.isBot = true;
+    player.disconnected = true;
+    if (!player.name.endsWith(' (offline)')) player.name += ' (offline)';
+    if (this.hostId === socketId) {
+      const human = this.players.find((p) => !p.isBot);
+      this.hostId = human ? human.id : player.id;
+    }
+    this.touch();
+    if (this.currentTurn === idx) this.scheduleBotsIfNeeded();
+    return { left: player, roomEmpty: false };
+  }
+
+  reconnect(token, socketId) {
+    const player = this.players.find((p) => p.reconnectToken === token && p.disconnected);
+    if (!player) return null;
+    const oldId = player.id;
+    player.id = socketId;
+    player.isBot = false;
+    player.disconnected = false;
+    player.name = player.name.replace(/ \(offline\)$/, '');
+    if (this.hostId === oldId) this.hostId = socketId;
+    this.touch();
+    return player;
+  }
+
+  kick(requesterId, targetId) {
+    if (this.hostId !== requesterId) return { ok: false, error: 'Only host can kick' };
+    if (requesterId === targetId) return { ok: false, error: 'Host cannot kick self' };
+    if (this.status !== 'waiting') return { ok: false, error: 'Kick is only available before game starts' };
+    const result = this.leave(targetId);
+    return result.left ? { ok: true, player: result.left } : { ok: false, error: 'Player not found' };
+  }
+
+  touch() { this.updatedAt = Date.now(); }
 
   startGame(fillBots = true) {
     if (this.status !== 'waiting') return { ok: false, error: 'Already started' };
@@ -147,6 +202,7 @@ class Room {
     this.winner = null;
     this.result = null;
     this.status = 'playing';
+    this.touch();
     this.clearBotTimers();
     this.clearTurnTimer();
     this.scheduleBotsIfNeeded();
@@ -214,6 +270,7 @@ class Room {
     this.discards.push({ tile, by: pIndex });
     this.phase = 'claim';
     this.claimState = { tile, by: pIndex, claims: [], responses: new Set() };
+    this.touch();
     this.startClaimWindow();
     this.scheduleBotClaims();
   }
@@ -250,6 +307,7 @@ class Room {
     this.claimState.claims = this.claimState.claims.filter((c) => c.pIndex !== pIndex);
     this.claimState.claims.push({ pIndex, type, priority: CLAIM_PRIORITY[type] });
     this.claimState.responses.add(pIndex);
+    this.touch();
 
     if (type === 'hu') {
       if (this.claimTimer) clearTimeout(this.claimTimer);
@@ -267,6 +325,7 @@ class Room {
     if (pIndex === this.claimState.by) return { ok: false, error: 'Discarder cannot pass claim' };
     this.claimState.claims = this.claimState.claims.filter((c) => c.pIndex !== pIndex);
     this.claimState.responses.add(pIndex);
+    this.touch();
     if (this.claimState.responses.size >= this.players.length - 1) this.resolveClaims();
     return { ok: true };
   }
@@ -422,6 +481,7 @@ class Room {
         id: p.id,
         name: p.name,
         isBot: p.isBot,
+        disconnected: p.disconnected,
         handCount: p.hand.length,
         hand: p.id === viewerId ? p.hand : undefined,
         melds: p.melds,
@@ -434,6 +494,7 @@ class Room {
       winner: this.winner,
       result: this.result,
       yourHand: viewer ? viewer.hand : [],
+      reconnectToken: viewer ? viewer.reconnectToken : null,
     };
   }
 }
@@ -451,6 +512,15 @@ class RoomManager {
   removeEmptyRooms() {
     for (const [code, room] of this.rooms) {
       if (room.players.length === 0) this.rooms.delete(code);
+    }
+  }
+  removeInactiveRooms(maxIdleMs) {
+    const cutoff = Date.now() - maxIdleMs;
+    for (const [code, room] of this.rooms) {
+      if (room.updatedAt < cutoff) {
+        room.clearTimers();
+        this.rooms.delete(code);
+      }
     }
   }
 }
