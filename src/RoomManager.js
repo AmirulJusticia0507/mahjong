@@ -10,25 +10,15 @@ const {
   removeForChi,
   removeForPong,
   removeForGang,
-  isSuited,
 } = require('./MahjongEngine');
 const crypto = require('crypto');
+const { chooseDiscard, chooseClaim } = require('./BotPlayer');
 
 const CLAIM_TIMEOUT_MS = Number(process.env.CLAIM_TIMEOUT_MS) || 5000;
 const TURN_TIMEOUT_MS = Number(process.env.TURN_TIMEOUT_MS) || 30000;
 const BOT_DELAY_MS = Number(process.env.BOT_DELAY_MS) || 1200;
 
 const CLAIM_PRIORITY = { chi: 1, pong: 2, gang: 3, hu: 4 };
-
-function chooseBotDiscard(hand) {
-  const counts = {};
-  for (const t of hand) counts[t] = (counts[t] || 0) + 1;
-  const singles = hand.filter((t) => counts[t] === 1);
-  const pool = singles.length ? singles : hand;
-  const honours = pool.filter((t) => !isSuited(t));
-  const chooseFrom = honours.length ? honours : pool;
-  return chooseFrom[Math.floor(Math.random() * chooseFrom.length)];
-}
 
 class Room {
   constructor(code, maxPlayers = 4) {
@@ -484,7 +474,7 @@ class Room {
         this.turnDeadline = Date.now() + delay;
         const t = setTimeout(() => {
           if (this.status !== 'playing' || this.phase !== 'discard') return;
-          const tile = chooseBotDiscard(p.hand);
+          const tile = chooseDiscard(p.hand);
           try { this.discardTile(p.id, tile); } catch (e) { /* ignore */ }
         }, delay);
         if (p.isBot) this.botTimers.push(t);
@@ -505,11 +495,7 @@ class Room {
       if (!p.isBot) continue;
       const t = setTimeout(() => {
         if (this.status !== 'playing' || this.phase !== 'claim' || !this.claimState) return;
-        let type = null;
-        if (isWinningHand(p.hand.concat([tile]), p.melds.length)) type = 'hu';
-        else if (validateGang(p.hand, tile)) type = 'gang';
-        else if (validatePong(p.hand, tile)) type = 'pong';
-        else if (i === (by + 1) % this.players.length && validateChi(p.hand, tile)) type = 'chi';
+        const type = chooseClaim(p, tile, i === (by + 1) % this.players.length);
         if (type) {
           try { this.submitClaim(p.id, type); } catch (e) { /* ignore */ }
         } else this.passClaim(p.id);

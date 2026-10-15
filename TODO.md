@@ -122,6 +122,7 @@ Status: **MVP backend + frontend sudah diimplementasikan**. Mendukung room 2–4
 - [x] Bot auto-fill sesuai maxPlayers.
 - [x] Strategi dasar: discard tile paling sedikit/duplikat & honour; klaim Pong/Gang/Hu bila memungkinkan.
 - [x] Delay bot (non-blocking).
+- [x] Pisahkan strategi bot ke module testable untuk discard dan prioritas klaim.
 - [ ] Strategi lebih pintar (danger tiles, chow preference, scoring).
 
 ## 7. Keamanan & Kualitas
