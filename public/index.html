@@ -11,6 +11,12 @@
     <h1 class="text-2xl font-bold mb-4 text-center">🀄 Mahjong Multiplayer</h1>
     <label class="block mb-1 text-sm">Nama</label>
     <input id="name" class="w-full mb-3 p-2 rounded bg-slate-700" placeholder="Nama pemain" />
+    <label class="block mb-1 text-sm">Total Pemain (2–4)</label>
+    <select id="playerCount" class="w-full mb-3 p-2 rounded bg-slate-700">
+      <option value="2">2 (vs AI: 1 human + 1 bot)</option>
+      <option value="3">3 (2 human + 1 bot / vs AI: 1 human + 2 bot)</option>
+      <option value="4" selected>4 (3 human + 1 bot / vs AI penuh)</option>
+    </select>
     <label class="block mb-1 text-sm">Kode Room (untuk join)</label>
     <input id="roomCode" class="w-full mb-4 p-2 rounded bg-slate-700 uppercase" placeholder="ABC123" />
     <div class="flex gap-2">
@@ -35,6 +41,7 @@
         <span id="wallLabel" class="font-bold"></span>
       </div>
       <button id="startBtn" class="hidden bg-amber-600 hover:bg-amber-500 px-3 py-1 rounded">Start (host)</button>
+      <button id="leaveBtn" class="bg-rose-600 hover:bg-rose-500 px-3 py-1 rounded">Keluar Room</button>
     </div>
 
     <div class="grid grid-cols-3 gap-2 mb-4">

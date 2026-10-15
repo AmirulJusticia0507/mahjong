@@ -39,7 +39,10 @@ function broadcastEvent(room, event, payload) {
 
 io.on('connection', (socket) => {
   socket.on('createRoom', (data, ack) => {
-    const room = manager.createRoom();
+    const maxPlayers = [2, 3, 4].includes(parseInt(data && data.maxPlayers, 10))
+      ? parseInt(data.maxPlayers, 10)
+      : 4;
+    const room = manager.createRoom(maxPlayers);
     const name = (data && data.name) || 'Player';
     const res = room.addPlayer(socket.id, name);
     if (!res.ok) {
@@ -48,9 +51,9 @@ io.on('connection', (socket) => {
       return;
     }
     socket.join(room.code);
-    socket.emit('roomJoined', { code: room.code, player: res.player });
+    socket.emit('roomJoined', { code: room.code, player: res.player, maxPlayers: room.maxPlayers });
     broadcastState(room);
-    if (typeof ack === 'function') ack({ ok: true, code: room.code });
+    if (typeof ack === 'function') ack({ ok: true, code: room.code, maxPlayers: room.maxPlayers });
   });
 
   socket.on('joinRoom', (data, ack) => {
@@ -70,14 +73,14 @@ io.on('connection', (socket) => {
       return;
     }
     socket.join(room.code);
-    socket.emit('roomJoined', { code: room.code, player: res.player });
+    socket.emit('roomJoined', { code: room.code, player: res.player, maxPlayers: room.maxPlayers });
     broadcastState(room);
     broadcastEvent(room, 'playerJoined', { name: res.player.name });
-    if (typeof ack === 'function') ack({ ok: true, code: room.code });
+    if (typeof ack === 'function') ack({ ok: true, code: room.code, maxPlayers: room.maxPlayers });
 
-    // auto-start if 4 humans
+    // auto-start when all seats are filled by humans
     const humans = room.players.filter((p) => !p.isBot).length;
-    if (humans >= 4 && room.status === 'waiting') {
+    if (humans >= room.maxPlayers && room.status === 'waiting') {
       room.startGame(false);
       broadcastEvent(room, 'gameStarted', { code: room.code });
       broadcastState(room);
@@ -125,6 +128,33 @@ io.on('connection', (socket) => {
       const s = io.sockets.sockets.get(pid);
       if (s) s.emit('chatMessage', { from: room.players.find((p) => p.id === socket.id)?.name || 'Anon', message: msg });
     }
+  });
+
+  socket.on('leaveRoom', () => {
+    let target = null;
+    for (const room of manager.rooms.values()) {
+      if (room.players.some((p) => p.id === socket.id)) { target = room; break; }
+    }
+    if (!target) return socket.emit('roomLeft', {});
+
+    const res = target.leave(socket.id);
+    socket.leave(target.code);
+    socket.emit('roomLeft', {});
+
+    if (res.roomEmpty) {
+      manager.rooms.delete(target.code);
+      return;
+    }
+
+    // If only bots remain, stop & cleanup room
+    if (target.players.length > 0 && target.players.every((p) => p.isBot)) {
+      target.clearBotTimers();
+      manager.rooms.delete(target.code);
+      return;
+    }
+
+    broadcastEvent(target, 'playerLeft', { name: res.left ? res.left.name : 'Player' });
+    broadcastState(target);
   });
 
   socket.on('requestState', (data) => {

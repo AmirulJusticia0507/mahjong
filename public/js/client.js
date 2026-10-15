@@ -36,11 +36,12 @@
   // Lobby buttons
   document.getElementById('createBtn').addEventListener('click', () => {
     const name = document.getElementById('name').value || 'Player';
-    socket.emit('createRoom', { name }, (res) => {
+    const maxPlayers = parseInt(document.getElementById('playerCount').value, 10) || 4;
+    socket.emit('createRoom', { name, maxPlayers }, (res) => {
       if (res && res.ok) {
         roomCode = res.code;
         document.getElementById('roomCode').value = res.code;
-        status.textContent = `Room ${res.code} dibuat. Tunggu pemain / klik Start.`;
+        status.textContent = `Room ${res.code} dibuat untuk ${res.maxPlayers || maxPlayers} pemain. Tunggu pemain / klik Start.`;
       } else {
         status.textContent = (res && res.error) || 'Gagal membuat room';
       }
@@ -64,6 +65,11 @@
   document.getElementById('startBtn').addEventListener('click', () => {
     if (!roomCode) return;
     socket.emit('startGame', { code: roomCode });
+  });
+
+  document.getElementById('leaveBtn').addEventListener('click', () => {
+    if (!roomCode) return;
+    socket.emit('leaveRoom');
   });
 
   document.querySelectorAll('.claimBtn').forEach((b) => {
@@ -91,7 +97,16 @@
     setMyId(socket.id);
     showGame();
     document.getElementById('roomLabel').textContent = data.code;
+    document.getElementById('leaveBtn').classList.remove('hidden');
     log(`Bergabung ke room ${data.code}`);
+  });
+
+  socket.on('roomLeft', () => {
+    roomCode = null;
+    state = null;
+    game.classList.add('hidden');
+    lobby.classList.remove('hidden');
+    status.textContent = 'Kamu keluar dari room.';
   });
 
   socket.on('errorMessage', (msg) => {
@@ -125,6 +140,10 @@
 
   socket.on('playerJoined', (data) => {
     log(`${data.name} bergabung`);
+  });
+
+  socket.on('playerLeft', (data) => {
+    log(`${data.name} keluar`);
   });
 
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }

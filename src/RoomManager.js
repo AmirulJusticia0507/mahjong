@@ -29,8 +29,9 @@ function chooseBotDiscard(hand) {
 }
 
 class Room {
-  constructor(code) {
+  constructor(code, maxPlayers = 4) {
     this.code = code;
+    this.maxPlayers = [2, 3, 4].includes(maxPlayers) ? maxPlayers : 4;
     this.players = []; // { id, name, hand, melds, isBot }
     this.status = 'waiting'; // waiting | playing | finished
     this.hostId = null;
@@ -49,7 +50,7 @@ class Room {
 
   addPlayer(socketId, name) {
     if (this.status !== 'waiting') return { ok: false, error: 'Game already started' };
-    if (this.players.length >= 4) return { ok: false, error: 'Room full' };
+    if (this.players.length >= this.maxPlayers) return { ok: false, error: 'Room full' };
     if (this.players.some((p) => p.id === socketId)) return { ok: false, error: 'Already in room' };
     const player = { id: socketId, name: name || `Player${this.players.length + 1}`, hand: [], melds: [], isBot: false };
     this.players.push(player);
@@ -58,7 +59,7 @@ class Room {
   }
 
   addBot(name) {
-    if (this.players.length >= 4) return null;
+    if (this.players.length >= this.maxPlayers) return null;
     const idx = this.players.length;
     const player = { id: `bot-${idx}-${Date.now()}`, name: name || `Bot${idx + 1}`, hand: [], melds: [], isBot: true };
     this.players.push(player);
@@ -72,6 +73,14 @@ class Room {
       this.players[idx].isBot = true;
       this.players[idx].name += ' (bot)';
       this.players[idx].id = `bot-${idx}-${Date.now()}`;
+      if (this.hostId === socketId) {
+        const humanIdx = this.players.findIndex((p) => !p.isBot);
+        this.hostId = humanIdx >= 0 ? this.players[humanIdx].id : this.players[0].id;
+      }
+      if (this.currentTurn === idx) {
+        this.clearBotTimers();
+        this.scheduleBotsIfNeeded();
+      }
       return true;
     }
     this.players.splice(idx, 1);
@@ -79,20 +88,51 @@ class Room {
     return true;
   }
 
+  // Used when a player intentionally leaves (server will also call socket.leave)
+  leave(socketId) {
+    const idx = this.players.findIndex((p) => p.id === socketId);
+    if (idx < 0) return { left: null, roomEmpty: this.players.length === 0 };
+
+    const leaving = this.players[idx];
+
+    if (this.status === 'playing') {
+      // keep seat as bot so game can continue
+      this.players[idx].isBot = true;
+      this.players[idx].name += ' (bot)';
+      this.players[idx].id = `bot-${idx}-${Date.now()}`;
+      if (this.hostId === socketId) {
+        const humanIdx = this.players.findIndex((p) => !p.isBot);
+        this.hostId = humanIdx >= 0 ? this.players[humanIdx].id : this.players[0].id;
+      }
+      if (this.currentTurn === idx) {
+        this.clearBotTimers();
+        this.scheduleBotsIfNeeded();
+      }
+      return { left: leaving, roomEmpty: false };
+    }
+
+    this.players.splice(idx, 1);
+    if (this.hostId === socketId) this.hostId = this.players[0] ? this.players[0].id : null;
+    return { left: leaving, roomEmpty: this.players.length === 0 };
+  }
+
   startGame(fillBots = true) {
     if (this.status !== 'waiting') return { ok: false, error: 'Already started' };
     if (this.players.length < 1) return { ok: false, error: 'Need at least 1 player' };
-    if (fillBots) while (this.players.length < 4) this.addBot();
-    if (this.players.length !== 4) return { ok: false, error: 'Need 4 players' };
+    if (fillBots) while (this.players.length < this.maxPlayers) this.addBot();
+    if (this.players.length !== this.maxPlayers) {
+      return { ok: false, error: `Need ${this.maxPlayers} players` };
+    }
 
+    const n = this.maxPlayers;
     const deck = shuffle(createDeck());
-    const hands = [[], [], [], []];
+    const hands = Array.from({ length: n }, () => []);
     const HAND = 13;
     for (let i = 0; i < HAND; i++) {
-      for (let p = 0; p < 4; p++) hands[p].push(deck.pop());
+      for (let p = 0; p < n; p++) hands[p].push(deck.pop());
     }
     hands[0].push(deck.pop());
-    for (let p = 0; p < 4; p++) {
+    for (let p = 0; p < n; p++) {
       this.players[p].hand = sortHand(hands[p]);
       this.players[p].melds = [];
     }
@@ -336,10 +376,10 @@ class Room {
 
 class RoomManager {
   constructor() { this.rooms = new Map(); }
-  createRoom() {
+  createRoom(maxPlayers = 4) {
     let code;
     do { code = Math.random().toString(36).slice(2, 8).toUpperCase(); } while (this.rooms.has(code));
-    const room = new Room(code);
+    const room = new Room(code, maxPlayers);
     this.rooms.set(code, room);
     return room;
   }

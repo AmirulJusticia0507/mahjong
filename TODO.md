@@ -1,159 +1,104 @@
 # TODO — Online Multiplayer Mahjong
 
-Berdasarkan analisa `readme.md`. Status awal: **hanya dokumentasi tersedia**, belum ada source code. Urutan disusun agar bisa dikerjakan bertahap dari fondasi hingga fitur multiplayer & game logic.
+Terakhir diperbarui: 15 Oktober 2026.
 
-## 0. Analisa Singkat Dokumentasi
+Status saat ini: MVP sudah dapat membuat/join room, bermain 2–4 pemain dengan bot pengisi, menjalankan draw/discard dan klaim dasar, chat, serta keluar room. Checklist di bawah mencerminkan implementasi yang sudah ada; item yang masih parsial tetap belum dicentang dan diberi catatan.
 
-- **Kekuatan:** cakupan fitur lengkap (lobby, room, real-time socket, Chi/Pong/Gang/Hu, chat, bot opsional), alur game & event Socket.io terdefinisi jelas, struktur proyek & tech stack jelas.
-- **Kekurangan / yang perlu dikerjakan:**
-  - Belum ada `package.json`, `src/`, `public/`.
-  - Definisi format `Room`, `Player`, & state game belum ada (server-authoritative vs client).
-  - Aturan validasi Chi/Pong/Gang/Hu (termasuk prioritas klaim & timeout) belum dirinci.
-  - Bot/AI hanya opsional, tidak ada detail perilaku.
-  - Tidak ada strategi penanganan disconnect/reconnect, sinkronisasi state, keamanan input.
-  - Lisensi MIT disebut tapi file `LICENSE` belum ada.
-  - Tidak ada skenario testing/QA.
+## 1. Foundation
 
----
+- [x] Inisialisasi `package.json` dengan script `start`, `dev`, dan `test`.
+- [x] Pasang `express`, `socket.io`, dan `nodemon`.
+- [x] Buat struktur dasar `public/`, `public/js/`, dan `src/`.
+- [x] Tambahkan `.gitignore` dan `LICENSE` MIT.
+- [ ] Lengkapi konfigurasi environment untuk origin CORS dan batas room (saat ini baru `PORT`).
 
-## 1. Inisialisasi Proyek (Foundation)
+## 2. Backend — Server & Room
 
-- [ ] Inisialisasi `package.json` (name, scripts `start` & `dev`, metadata).
-- [ ] Pasang dependensi: `express`, `socket.io`, `nodemon` (dev).
-- [ ] Buat struktur folder sesuai README (`public/`, `public/css/`, `public/js/`, `src/`).
-- [ ] Tambahkan `.gitignore` (node_modules, logs, env).
-- [ ] Tambahkan `LICENSE` (MIT).
-- [ ] Siapkan env/config (port, origin, room limit) via `process.env`.
+- [x] Setup Express, static serving, HTTP server, Socket.io, dan endpoint `/health`.
+- [x] Implementasikan event `createRoom`, `joinRoom`, `startGame`, `discardTile`, `actionClaim`, `chatMessage`, `requestState`, `leaveRoom`, dan `disconnect`.
+- [x] Buat room code unik 6 karakter dan state room `waiting` / `playing` / `finished`.
+- [x] Dukung kapasitas room yang dapat dipilih: 2, 3, atau 4 pemain.
+- [x] Batasi join ketika room penuh atau game sudah dimulai.
+- [x] Tambahkan bot sampai kapasitas room saat host memulai game.
+- [x] Transfer host ketika pemain keluar dari room yang masih menunggu.
+- [x] Ubah kursi pemain menjadi bot ketika keluar/disconnect saat game berlangsung.
+- [x] Hapus room kosong dan room yang hanya menyisakan bot setelah pemain keluar secara sengaja.
+- [ ] Samakan cleanup disconnect dengan alur `leaveRoom`, termasuk cleanup room yang hanya berisi bot.
+- [ ] Tambahkan kick player dan timeout room tidak aktif.
+- [ ] Tambahkan validasi payload terpusat dan rate limiting socket.
 
-## 2. Backend — Server & Room Management
+## 3. Mahjong Engine & Gameplay
 
-### 2.1 `src/server.js`
-- [ ] Setup Express + static serving `public/`.
-- [ ] Buat HTTP server & attach Socket.io (CORS configurable).
-- [ ] Definisikan event handlers: `createRoom`, `joinRoom`, `discardTile`, `actionClaim`, `chatMessage`, `disconnect`.
-- [ ] Validasi payload & rate limiting dasar.
-- [ ] Lock room bila game sedang berlangsung (prevent late join kecuali spectator).
+### Deck, distribusi, dan giliran
 
-### 2.2 `src/RoomManager.js`
-- [ ] Model data `Room`: id/code, players[], state (`waiting/playing/finished`), host, max 4.
-- [ ] Generate kode room unik (6 char).
-- [ ] Handler join/leave, kick, transfer host saat disconnect.
-- [ ] Management bot fill (opsional) & flag `isBot`.
-- [ ] Broadcast `updateGameState` ke semua client room.
-- [ ] Cleanup room kosong & timeout.
+- [x] Generate 136 batu: Bamboo, Coin, Character, Wind, dan Dragon.
+- [x] Shuffle dengan RNG yang dapat diinjeksi untuk test/debugging.
+- [x] Deal 13 batu per pemain dan 14 untuk dealer, termasuk room 2–4 pemain.
+- [x] Kelola wall, hand, discard pile, giliran, dan phase permainan.
+- [x] Validasi discard berdasarkan giliran dan kepemilikan batu.
+- [x] Akhiri permainan sebagai draw ketika wall habis.
+- [ ] Tambahkan timeout giliran pemain manusia (auto-discard/skip).
 
-## 3. Backend — Mahjong Engine
+### Klaim dan kemenangan
 
-### 3.1 Deck & Distribusi (`src/MahjongEngine.js`)
-- [ ] Generate 136 batu (Bamboo, Coin, Character 1–9 ×4; Wind ×4; Dragon ×4; bila pakai flower/season sesuaikan).
-- [ ] Shuffle deterministik (seedable untuk debugging).
-- [ ] Deal 13 ke setiap pemain; dealer dapat 14.
-- [ ] Manage *wall* (sisa batu) & indeks draw.
+- [x] Buka window klaim 5 detik setelah discard.
+- [x] Validasi dasar Chi, Pong, Gang, dan Hu di server.
+- [x] Terapkan prioritas Hu > Gang > Pong > Chi dan tie-break berdasarkan urutan pemain.
+- [x] Pindahkan batu hasil klaim ke meld dan lanjutkan giliran ke pengklaim.
+- [ ] Perbaiki validasi posisi Chi agar memakai jumlah pemain room, bukan konstanta 4.
+- [ ] Implementasikan Gang lengkap: concealed/added/promoted dan replacement draw.
+- [ ] Tambahkan tombol/pass event yang langsung mencatat pemain melewati klaim (saat ini menunggu timeout).
+- [ ] Tambahkan perhitungan skor/fan dan next-round/dealer logic.
 
-### 3.2 Turn & Draw/Discard
-- [ ] State giliran (`currentTurn`, phase `draw`/`discard`).
-- [ ] `drawTile`: ambil dari wall, kirim hanya ke pemain terkait.
-- [ ] `discardTile`: validasi kepemilikan batu; masukkan ke discard pile; ubah phase klaim.
-- [ ] Timeout per giliran (auto-discard / skip) & notifier.
+## 4. Sinkronisasi, Keamanan, dan Robustness
 
-### 3.3 Klaim (Chi/Pong/Gang/Hu)
-- [ ] Window klaim singkat setelah discard (mis. 5s).
-- [ ] Validasi Chi: hanya pemain kiri dealer order; urutan 3 (bisa handle edge 1-2-3 / 7-8-9).
-- [ ] Validasi Pong: kembar 3 (ambil 2 dari hand + discard).
-- [ ] Validasi Gang: kembar 4 (concealed/added/promoted); draw replacement tile.
-- [ ] Validasi Hu: form $(4\times3)+2$ (melds sequences/triplets + pair).
-- [ ] Prioritas klaim: Hu > Pong/Gang > Chi; resolusi tie & broadcast.
-- [ ] Broadcast hasil klaim & pemindahan batu ke meld area.
-
-### 3.4 Kondisi Akhir & Skor
-- [ ] Deteksi kemenangan (Hu) & akhir wall (draw game).
-- [ ] Hitung skor dasar (fan/points) — bisa mulai minimal then extend.
-- [ ] Reset round / next dealer logic (opsional).
-
-## 4. Real-time & Sinkronisasi
-
-- [ ] Desain `gameState` payload (publik vs privat: tiap pemain hanya melihat hand sendiri).
-- [ ] Event `gameStarted`, `drawTile`, `discardTile`, `actionClaim`, `updateGameState`.
-- [ ] Heartbeat/reconnect & state resync (requestState).
-- [ ] Penanganan disconnect mid-game (bot fill / pause / forfeit).
-- [ ] Chat event + sanitasi pesan (anti-XSS).
+- [x] Kirim state privat: setiap pemain hanya melihat hand sendiri.
+- [x] Sediakan `requestState` untuk meminta sinkronisasi state.
+- [x] Batasi panjang chat hingga 300 karakter dan escape output chat di client.
+- [ ] Implementasikan reconnect yang memulihkan identitas/kursi pemain dan state room.
+- [ ] Sanitasi dan batasi nama pemain.
+- [ ] Konfigurasikan CORS berdasarkan environment (saat ini menerima semua origin).
+- [ ] Tambahkan logging terstruktur, error handling global, dan graceful shutdown.
 
 ## 5. Frontend
 
-### 5.1 `public/index.html`
-- [ ] Layout lobby: create/join room, nama pemain, daftar room.
-- [ ] Layout game: papan 4 pemain (top/right/bottom/left), wall count, discard piles, meld area, chat, action buttons (Chi/Pong/Gang/Hu/Pass).
-- [ ] Responsif (Tailwind via CDN/PostCSS).
+- [x] Buat lobby untuk nama, create room, join room, kode room, dan pilihan 2–4 pemain.
+- [x] Buat tampilan game untuk pemain, hand, meld, wall, discard terakhir, action, chat, dan log.
+- [x] Implementasikan koneksi Socket.io dan emit/listener event gameplay utama.
+- [x] Tambahkan tombol keluar room dan kembalikan UI ke lobby setelah berhasil keluar.
+- [x] Render batu dengan helper mapping warna/label dan hand yang dapat diklik untuk discard.
+- [x] Nonaktifkan tombol klaim di luar phase klaim.
+- [ ] Tampilkan timer klaim dan hanya aktifkan aksi yang valid untuk pemain terkait.
+- [ ] Tambahkan pemilihan/sorting hand yang lebih baik, highlight klaim, dan konfirmasi Hu.
+- [ ] Tambahkan toast/error state dan cegah log hasil akhir dirender berulang.
+- [ ] Tambahkan stylesheet khusus, animasi, serta QA layout responsive/mobile.
 
-### 5.2 `public/js/client.js`
-- [ ] Koneksi Socket.io & reconnection.
-- [ ] Event listeners & emit create/join/discard/claim/chat.
-- [ ] State management lokal & update UI.
-- [ ] Timer klaim & disable action saat bukan giliran.
+## 6. Bot/AI
 
-### 5.3 `public/js/ui.js`
-- [ ] Rendering tile (img/css sprite), animasi draw/discard.
-- [ ] Hand sorting & selection.
-- [ ] Highlight klaim valid & modal konfirmasi Hu.
-- [ ] Toast/notification & error handling.
+- [x] Bot otomatis discard dengan preferensi batu honour/singleton.
+- [x] Bot otomatis mencoba Hu, Gang, Pong, lalu Chi.
+- [x] Tambahkan delay agar aksi bot tidak instan dan timer dapat dibersihkan.
+- [ ] Pisahkan strategi bot ke interface/module tersendiri agar mudah diuji dan dikembangkan.
 
-### 5.4 `public/js/mahjongCore.js`
-- [ ] Mapping tile code ↔ visual asset.
-- [ ] Helper sorting (suit → number → honour).
-- [ ] Helper validasi sisi client (preview Chi/Pong/Hu), bukan sumber kebenaran.
+## 7. Testing & QA
 
-### 5.5 `public/css/style.css`
-- [ ] Tailwind directives & custom styles (tile size, orientations, responsive).
+- [x] Tambahkan unit test dasar untuk deck, shuffle, sorting, Hu, Chi, Pong, dan Gang.
+- [ ] Tambahkan unit test `RoomManager` untuk kapasitas 2–4 pemain, leave, host transfer, bot fill, dan cleanup.
+- [ ] Tambahkan test klaim untuk prioritas, tie-break, timeout, dan posisi Chi di room 2/3 pemain.
+- [ ] Tambahkan integration test Socket.io untuk create/join/start/leave/disconnect dan gameplay.
+- [ ] Lakukan manual QA multiplayer 2–4 tab, bot, reconnect/disconnect, dan mobile.
+- [ ] Tambahkan lint/format dan jalankan di CI.
 
-## 6. Bot/AI (Opsional)
+## 8. Dokumentasi & Deployment
 
-- [ ] Interface `BotPlayer` dengan metode decideDiscard/decideClaim.
-- [ ] Strategi dasar: discard random / tile paling sedikit duplikat, klaim Pong/Gang jika memungkinkan, Hu jika tersedia.
-- [ ] Tetapkan delay (simulasi berpikir) & non-blocking.
+- [ ] Perbarui `readme.md` agar mencakup mode 2–4 pemain, `leaveRoom`, `requestState`, chat, dan bot behavior terbaru.
+- [ ] Dokumentasikan seluruh payload event Socket.io dan schema game state.
+- [ ] Tambahkan panduan deploy (PM2/Docker) dan konfigurasi production.
 
-## 7. Keamanan & Kualitas
+## Milestone
 
-- [ ] Server-authoritative: semua validasi di server; client hanya render.
-- [ ] Rate limiting socket & validasi tipe/ukuran payload.
-- [ ] Sanitasi chat & nama pemain.
-- [ ] Logging (info/warn/error) & observability dasar.
-- [ ] Error boundary & graceful shutdown.
-
-## 8. Testing & QA
-
-- [ ] Unit test `MahjongEngine` (deck, shuffle, Hu validation, Chi/Pong).
-- [ ] Integration test socket events (create/join/discard/claim).
-- [ ] Manual QA multiplayer 4 tab + disconnect scenarios.
-- [ ] Cross-browser & mobile responsiveness.
-- [ ] Performance test (10+ rooms) bila perlu.
-
-## 9. Dokumentasi & DevEx
-
-- [ ] Perbarui README bila implementasi menyimpang dari struktur.
-- [ ] Dokumentasi event payload & state schema.
-- [ ] Script `npm run dev`, lint/format (opsional).
-- [ ] Panduan deploy (PM2 / Docker) (opsional).
-
-## 10. Milestone Prioritas (MVP)
-
-**Milestone 1 — Lobby & Room (tanpa game logic)**
-- [ ] Room create/join + chat dasar + list pemain.
-
-**Milestone 2 — Gameplay Dasar**
-- [ ] Deal, draw, discard, turn cycle, update state.
-
-**Milestone 3 — Klaim & Kemenangan**
-- [ ] Chi/Pong/Gang/Hu + prioritas + Hu detection.
-
-**Milestone 4 — Robustness**
-- [ ] Reconnect, disconnect handling, bot fill, timeout.
-
-**Milestone 5 — Polish**
-- [ ] Animasi, responsive, testing, dokumentasi.
-
----
-
-### Catatan Implementasi
-- Pastikan tidak ada state game kritis di client; server adalah sumber kebenaran.
-- Definisikan kontrak payload Socket.io terlebih dulu sebelum coding UI.
-- Prioritaskan `MahjongEngine` yang testable (pure functions) agar mudah diuji.
+- [x] Milestone 1 — Lobby, create/join room, daftar pemain, dan chat dasar.
+- [x] Milestone 2 — Deal, draw, discard, turn cycle, dan state privat.
+- [x] Milestone 3 — Klaim dasar Chi/Pong/Gang/Hu dan deteksi kemenangan.
+- [ ] Milestone 4 — Reconnect, timeout pemain, disconnect/cleanup konsisten, dan test integrasi.
+- [ ] Milestone 5 — Skor, polish UI, responsive QA, dokumentasi lengkap, dan deployment.
